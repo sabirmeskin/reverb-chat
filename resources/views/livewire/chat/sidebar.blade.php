@@ -36,6 +36,7 @@ new class extends Component {
     public function handleConversationStarted($conversationId)
         {
             $this->setConversation($conversationId);
+            $this->loadConversations();
         }
 
 

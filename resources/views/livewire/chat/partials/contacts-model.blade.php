@@ -42,7 +42,7 @@ new class extends Component {
         ]);
     }
 
-    $this->dispatch('conversationStarted', $userId);
+    $this->dispatch('conversationStarted', $conversation->id);
 
 }
 
