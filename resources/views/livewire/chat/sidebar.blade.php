@@ -9,7 +9,7 @@ new class extends Component {
 
     public $users = [];
     public $conversations = [];
-    public $conversation =null;
+    public $conversation ;
 
     public function loadConversations()
     {
@@ -25,22 +25,17 @@ new class extends Component {
 
     }
 
-    public function setUser($conversationId)
-    {
-        $this->user = null; // Reset the individual user
-        $this->conversation = auth()->user()->conversations()->find($conversationId);
-        // dd($this->conversation->participants);
-    }
+
     public function setConversation($conversationId)
     {
         $this->conversation = auth()->user()->conversations()->find($conversationId);
-        dd($this->conversation->participants);
+        // dd($this->conversation->participants);
     }
 
     #[On('conversationStarted')]
-    public function handleConversationStarted($userId)
+    public function handleConversationStarted($conversationId)
         {
-            $this->setUser($userId);
+            $this->setConversation($conversationId);
         }
 
 
@@ -73,18 +68,18 @@ new class extends Component {
                 <flux:navlist.item href="#">Billing</flux:navlist.item>
             </flux:navlist.group>
             <flux:navlist.group heading="Contacts" expandable>
-                @foreach ($conversations as $conversation)
+                @foreach ($conversations as $convo)
                 <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
-                    <div class="flex items-center space-x-3 cursor-pointer" wire:click="setUser({{ $conversation->id }})">
+                    <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
-                            <h3 class="font-semibold text-foreground">{{ $conversation->name }}</h3>
+                            <h3 class="font-semibold text-foreground">{{ $convo->name }}</h3>
                             <p class="text-sm text-muted-foreground truncate">
-                                {{ $conversation->lastMessage->body ?? 'No messages yet' }}
+                                {{ $convo->lastMessage->body ?? 'No messages yet' }}
                             </p>
                         </div>
                         <span class="text-xs text-muted-foreground">
-                            {{ optional($conversation->lastMessage)->created_at ?
-                            $conversation->lastMessage->created_at->diffForHumans() : '' }}
+                            {{ optional($convo->lastMessage)->created_at ?
+                            $convo->lastMessage->created_at->diffForHumans() : '' }}
                         </span>
 
                     </div>

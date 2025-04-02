@@ -18,11 +18,12 @@ class MessageSendEvent implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public $message;
-    public function __construct($message)
+    public $conversation;
+    public function __construct($conversation)
     {
-        $this->message = $message;
+
     }
+
 
     /**
      * Get the channels the event should broadcast on.
@@ -32,7 +33,7 @@ class MessageSendEvent implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('chat-channel.'.$this->message->receiver_id),
+            new PrivateChannel('chat-channel.'.$this->conversation->id),
         ];
     }
 }

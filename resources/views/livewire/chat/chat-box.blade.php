@@ -42,6 +42,39 @@ new class extends Component {
 
 }
 
+public function sendMessage()
+{
+    if (!auth()->check()) {
+        session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
+        return;
+    }
+
+    if (empty(trim($this->message))) {
+        session()->flash('error', 'Le message ne peut pas être vide.');
+        return;
+    }
+
+    try {
+        $newMessage = Message::create([
+            "conversation_id" => $this->conversation->id, // ✅ Link message to the conversation
+            "sender_id"       => $this->sender_id ?? auth()->id(),
+            "receiver_id"     => null, // No need to specify a single receiver in group chats
+            "body"            => trim($this->message),
+            "type"            => "text",
+        ]);
+
+        $this->message = '';
+
+        $this->chatMessage($newMessage);
+
+        // Diffuser l'événement en temps réel
+        broadcast(new MessageSendEvent($newMessage))->toOthers();
+    } catch (\Exception $e) {
+        session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
+    }
+}
+
+
 private function formatMessage($message)
 {
     return [
@@ -67,34 +100,7 @@ private function formatMessage($message)
             'updated_at' => $message->updated_at
         ];
     }
-    public function sendMessage()
-    {
-        $this->validate([
-            'message' => 'required|string|max:255',
-        ]);
-        $message = Message::create([
-            'body' => $this->message,
-            'type' => 'text',
-            'sender_id' => $this->sender_id,
-            'receiver_id' => $this->receiver_id,
-            'conversation_id' => $this->conversation->id,
-        ]);
-        $this->message = '';
-     
-        // Emit the event to the chat channel
-        broadcast(new MessageSendEvent($message))->toOthers();
-        $this->chatMessage($message);
-        // $this->emit('messageSent', $message);
-        // $this->dispatchBrowserEvent('messageSent', [
-        //     'message' => $message,
-        // ]);
-        // $this->dispatchBrowserEvent('messageSent', [
-        //     'message' => $message,
-        //     'sender_id' => $this->sender_id,
-        //     'receiver_id' => $this->receiver_id,
-        //     'conversation_id' => $this->conversation->id,
-        // ]);      
-    }
+
         public function getListeners()
     {
         return [
