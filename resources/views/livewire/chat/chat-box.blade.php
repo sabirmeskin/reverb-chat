@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
+use App\Models\Conversation;
 
 new class extends Component {
     public $user;
@@ -16,18 +17,19 @@ new class extends Component {
     public $sender_id;
 
 
-    public function mount($userId)
+    public function mount($conversationId)
 {
-    $this->sender_id = auth()->id();
-    $this->receiver_id = $userId;
-    dd(auth()->user()->conversations());
-    // Find or create a conversation
-    $this->conversation = auth()->user()->conversations()
-        ->whereHas('participants', function ($query) use ($userId) {
-            $query->where('user_id', $userId);
-        })
-        ->with('messages.sender')
+    $conversation = Conversation::find($conversationId);
+    // dd($conversation);
+    $user = $conversation->participants()
+        ->where('user_id', '!=', auth()->id())
         ->first();
+    // dd($user);
+    $this->sender_id = auth()->id();
+    $this->receiver_id = $user->id;
+    // dd(auth()->user()->conversations());
+    // Find or create a conversation
+    $this->conversation = $conversation;
 
     if ($this->conversation) {
         $this->messages = $this->conversation->messages()
@@ -65,8 +67,34 @@ private function formatMessage($message)
             'updated_at' => $message->updated_at
         ];
     }
-
-
+    public function sendMessage()
+    {
+        $this->validate([
+            'message' => 'required|string|max:255',
+        ]);
+        $message = Message::create([
+            'body' => $this->message,
+            'type' => 'text',
+            'sender_id' => $this->sender_id,
+            'receiver_id' => $this->receiver_id,
+            'conversation_id' => $this->conversation->id,
+        ]);
+        $this->message = '';
+     
+        // Emit the event to the chat channel
+        broadcast(new MessageSendEvent($message))->toOthers();
+        $this->chatMessage($message);
+        // $this->emit('messageSent', $message);
+        // $this->dispatchBrowserEvent('messageSent', [
+        //     'message' => $message,
+        // ]);
+        // $this->dispatchBrowserEvent('messageSent', [
+        //     'message' => $message,
+        //     'sender_id' => $this->sender_id,
+        //     'receiver_id' => $this->receiver_id,
+        //     'conversation_id' => $this->conversation->id,
+        // ]);      
+    }
         public function getListeners()
     {
         return [
@@ -93,7 +121,7 @@ private function formatMessage($message)
         <div class="flex items-center space-x-3">
             <img src="" class="w-10 h-10 rounded-full object-cover" alt="Contact">
             <div>
-                <h2 class="font-semibold text-foreground">{{ $user->name }}</h2>
+                <h2 class="font-semibold text-foreground">{{ $conversation->name }}</h2>
                 <p class="text-sm text-green">Online</p>
             </div>
         </div>

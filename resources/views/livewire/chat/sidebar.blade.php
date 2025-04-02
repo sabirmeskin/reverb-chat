@@ -8,8 +8,8 @@ use Livewire\Attributes\On;
 new class extends Component {
 
     public $users = [];
-    public $user = null;
     public $conversations = [];
+    public $conversation =null;
 
     public function loadConversations()
     {
@@ -29,6 +29,12 @@ new class extends Component {
     {
         $this->user = null; // Reset the individual user
         $this->conversation = auth()->user()->conversations()->find($conversationId);
+        // dd($this->conversation->participants);
+    }
+    public function setConversation($conversationId)
+    {
+        $this->conversation = auth()->user()->conversations()->find($conversationId);
+        dd($this->conversation->participants);
     }
 
     #[On('conversationStarted')]
@@ -139,7 +145,7 @@ new class extends Component {
 
     <!-- Dynamically render chat-box only if a user is selected -->
     <div class="flex-1">
-        @if ($user)
+        @if ($conversation)
         <div wire:loading.flex class="flex items-center justify-center h-full">
             <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none"
                 viewBox="0 0 24 24">
@@ -148,11 +154,11 @@ new class extends Component {
             </svg>
         </div>
         <div wire:loading.remove>
-            @livewire('chat.chat-box', ['userId' => $user->id], key($user->id))
+            @livewire('chat.chat-box', ['conversationId' => $conversation->id], key($conversation->id))
         </div>
         @else
         <div class="flex items-center justify-center h-full text-muted-foreground">
-            Select a contact to start chatting
+            Choisissez un contact pour démarrer la conversation
         </div>
         @endif
     </div>
