@@ -104,8 +104,8 @@ private function formatMessage($message)
         public function getListeners()
     {
         return [
-            "echo-private:chat-channel.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
-        ];
+            "echo-private:conversation.{$this->conversation->id},MessageSentEvent" => 'listenForMessage',
+            ];
     }
 
     public function listenForMessage($event){
