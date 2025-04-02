@@ -21,12 +21,12 @@ new class extends Component {
 {
     $conversation = Conversation::find($conversationId);
     // dd($conversation);
-    $user = $conversation->participants()
+    $receiver = $conversation->participants()
         ->where('user_id', '!=', auth()->id())
         ->first();
     // dd($user);
     $this->sender_id = auth()->id();
-    $this->receiver_id = $user->id;
+    $this->receiver_id = $receiver->id;
     // dd(auth()->user()->conversations());
     // Find or create a conversation
     $this->conversation = $conversation;
@@ -58,7 +58,7 @@ public function sendMessage()
         $newMessage = Message::create([
             "conversation_id" => $this->conversation->id, // ✅ Link message to the conversation
             "sender_id"       => $this->sender_id ?? auth()->id(),
-            "receiver_id"     => null, // No need to specify a single receiver in group chats
+            "receiver_id"     => $this->receiver_id, 
             "body"            => trim($this->message),
             "type"            => "text",
         ]);
@@ -104,16 +104,20 @@ private function formatMessage($message)
         public function getListeners()
     {
         return [
-            "echo-private:conversation.{$this->conversation->id},MessageSentEvent" => 'listenForMessage',
+            "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
             ];
     }
 
     public function listenForMessage($event){
         // dd($event);
-        $chatMessage = Message::whereid($event['message']['id'])
+        $chatMessage = Message::whereid($event['id'])
         ->with('sender:id,name', 'receiver:id,name')->first();
         $this->chatMessage($chatMessage);
+        $this->dispatch('messageSent');
+
     }
+
+
 
 
 
@@ -123,11 +127,12 @@ private function formatMessage($message)
 <div class="flex flex-col w-full">
     {{--
     <!-- Chat Header -->@dd($messages) --}}
-    <div class="p-4 border-b border-border bg-card flex items-center justify-between pb-3">
+    <div class="p-4 border-b border-border bg-card flex items-center justify-between pb-3"
+    >
         <div class="flex items-center space-x-3">
             <img src="" class="w-10 h-10 rounded-full object-cover" alt="Contact">
             <div>
-                <h2 class="font-semibold text-foreground">{{ $conversation->name }}</h2>
+                <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=', auth()->id())->first()->name }}</h2>
                 <p class="text-sm text-green">Online</p>
             </div>
         </div>

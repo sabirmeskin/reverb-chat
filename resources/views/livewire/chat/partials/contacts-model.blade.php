@@ -23,8 +23,9 @@ new class extends Component {
 
     if (!$conversation) {
         // Create a new conversation
+
         $conversation = Conversation::create([
-            'name' => User::find($userId)->name,
+            'name' => 'conv',
             'type' => 'private',
         ]);
 
@@ -43,6 +44,7 @@ new class extends Component {
     }
 
     $this->dispatch('conversationStarted', $conversation->id);
+
 
 }
 

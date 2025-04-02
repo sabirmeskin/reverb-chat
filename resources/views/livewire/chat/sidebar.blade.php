@@ -40,6 +40,15 @@ new class extends Component {
         }
 
 
+    #[On('messageSent')]
+    public function handleMessageSent()
+        {
+            $this->loadConversations();
+          $this->dispatch('scroll-bottom');
+
+        }
+  
+
 };
 
 ?>
@@ -47,7 +56,12 @@ new class extends Component {
 <div class="flex h-full w-full flex-row gap-3">
     <div class="w-80 bg-card border-r border-border pr-2">
 
-        <div class="p-4">
+        <div class="p-4"
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
+        @scroll-bottom.window="$nextTick(() => {
+            $el.scrollTop = $el.scrollHeight;
+        })"
+        >
             <div class="flex flex-row w-full items-center justify-center space-x-5 ">
                 <flux:modal.trigger name="contacts">
                     <flux:button icon="users">Contacts</flux:button>
@@ -73,7 +87,7 @@ new class extends Component {
                 <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
-                            <h3 class="font-semibold text-foreground">{{ $convo->name }}</h3>
+                            <h3 class="font-semibold text-foreground">{{ $convo->participants()->where('user_id','!=', auth()->id())->first()->name }}</h3>
                             <p class="text-sm text-muted-foreground truncate">
                                 {{ $convo->lastMessage->body ?? 'No messages yet' }}
                             </p>
