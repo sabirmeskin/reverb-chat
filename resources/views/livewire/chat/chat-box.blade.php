@@ -1,8 +1,10 @@
 <?php
 use App\Events\MessageSendEvent;
+use App\Events\TypingEvent;
 
 use Livewire\Volt\Component;
 use App\Models\Message;
+use App\Models\TypingIndicator;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -15,20 +17,18 @@ new class extends Component {
     public $conversation;
     public $receiver_id;
     public $sender_id;
+    public $typingIndicator = null;
+    public $typingTimeout = null;
 
 
     public function mount($conversationId)
 {
     $conversation = Conversation::find($conversationId);
-    // dd($conversation);
     $receiver = $conversation->participants()
         ->where('user_id', '!=', auth()->id())
         ->first();
-    // dd($user);
     $this->sender_id = auth()->id();
     $this->receiver_id = $receiver->id;
-    // dd(auth()->user()->conversations());
-    // Find or create a conversation
     $this->conversation = $conversation;
 
     if ($this->conversation) {
@@ -39,6 +39,7 @@ new class extends Component {
                 return $this->formatMessage($message);
             })->toArray();
     }
+    $this->checkTypingStatus();
 
 }
 
@@ -66,14 +67,75 @@ public function sendMessage()
         $this->message = '';
 
         $this->chatMessage($newMessage);
-
-        // Diffuser l'événement en temps réel
+        $this->stopTyping();
         broadcast(new MessageSendEvent($newMessage))->toOthers();
     } catch (\Exception $e) {
         session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
     }
 }
 
+public function startTyping()
+    {
+        // Update typing_at timestamp
+        TypingIndicator::updateOrCreate(
+            [
+                'conversation_id' => $this->conversation->id,
+                'user_id' => $this->sender_id,
+            ],
+            [
+                'typing_at' => now(),
+            ]
+        );
+        
+        // Broadcast typing event
+        broadcast(new TypingEvent(
+            $this->conversation->id,
+            $this->sender_id,
+            true
+        ))->toOthers();
+        
+        // Set timeout to automatically stop typing after 3 seconds
+        // if ($this->typingTimeout) {
+        //     $this->typingTimeout = null;
+        // }
+        
+        // $this->typingTimeout = $this->setTimeout(function() {
+        //     $this->stopTyping();
+        // }, 3000);
+    }
+
+    public function stopTyping()
+    {
+        // Clear the typing_at timestamp
+        TypingIndicator::where('conversation_id', $this->conversation->id)
+            ->where('user_id', $this->sender_id)
+            ->update(['typing_at' => null]);
+        
+        // Broadcast stop typing event
+        broadcast(new TypingEvent(
+            $this->conversation->id,
+            $this->sender_id,
+            false
+        ))->toOthers();
+        
+        // Clear timeout
+        if ($this->typingTimeout) {
+            $this->typingTimeout = null;
+        }
+    }
+
+    public function checkTypingStatus()
+    {
+        // Check if receiver is typing (typing_at within last 3 seconds)
+        $typing = TypingIndicator::where('conversation_id', $this->conversation->id)
+            ->where('user_id', $this->receiver_id)
+            ->where('typing_at', '>=', now()->subSeconds(3))
+            ->first();
+            
+        $this->typingIndicator = $typing 
+            ? User::find($this->receiver_id)->name . ' is typing...' 
+            : null;
+    }
 
 private function formatMessage($message)
 {
@@ -101,11 +163,33 @@ private function formatMessage($message)
         ];
     }
 
-        public function getListeners()
+    public function getListeners()
     {
         return [
+            "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
-            ];
+        ];
+    }
+    public function listenForTyping($event)
+    {
+        dd($event);
+        if ($event['userId'] != $this->sender_id) {
+            if ($event['isTyping']) {
+                // User started typing - show indicator for 3 seconds
+                $this->typingIndicator = User::find($event['userId'])->name . ' is typing...';
+                $this->dispatch('typingUpdated');
+                
+                // Automatically hide after 3 seconds
+                $this->setTimeout(function() {
+                    $this->typingIndicator = null;
+                    $this->dispatch('typingUpdated');
+                }, 3000);
+            } else {
+                // User stopped typing - hide immediately
+                $this->typingIndicator = null;
+                $this->dispatch('typingUpdated');
+            }
+        }
     }
 
     public function listenForMessage($event){
@@ -194,7 +278,14 @@ private function formatMessage($message)
         </div>
         @endif
         @endforeach
-
+        <!-- Typing Indicator -->
+        <div 
+             class="flex items-start space-x-2">
+            <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
+            <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
+                <p class="text-foreground italic" wire:text="typingIndicator">  </p>
+            </div>
+        </div>
     </div>
 
     <!-- Message Input -->
@@ -203,7 +294,7 @@ private function formatMessage($message)
 
             <flux:button icon="paperclip" class="p-2"></flux:button>
 
-            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage"
+            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage" wire:keydown="startTyping"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
             <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
         </div>
