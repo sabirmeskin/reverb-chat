@@ -47,7 +47,7 @@ new class extends Component {
           $this->dispatch('scroll-bottom');
 
         }
-  
+
 
 };
 
@@ -131,7 +131,7 @@ new class extends Component {
 
         </div> --}}
 
-        <div class="p-4 border-t border-border">
+        <div class="p-4 ">
             <div class="flex space-x-2.5 flex-wrap space-y-2">
 
 

@@ -60,7 +60,7 @@ public function sendMessage()
         $newMessage = Message::create([
             "conversation_id" => $this->conversation->id, // ✅ Link message to the conversation
             "sender_id"       => $this->sender_id ?? auth()->id(),
-            "receiver_id"     => $this->receiver_id, 
+            "receiver_id"     => $this->receiver_id,
             "body"            => trim($this->message),
             "type"            => "text",
         ]);
@@ -94,15 +94,13 @@ public function startTyping()
             $this->sender_id,
             true
         ))->toOthers();
-        
+
         // Set timeout to automatically stop typing after 3 seconds
-        // if ($this->typingTimeout) {
-        //     $this->typingTimeout = null;
-        // }
-        
-            // $this->stopTyping();
-        // $this->typingTimeout = $this->setTimeout(function() {
-        // }, 3000);
+        if ($this->typingTimeout) {
+            $this->typingTimeout = null;
+        }
+
+
     }
 
     public function stopTyping()
@@ -111,7 +109,7 @@ public function startTyping()
         TypingIndicator::where('conversation_id', $this->conversation->id)
             ->where('user_id', $this->sender_id)
             ->update(['typing_at' => null]);
-        
+
         // Broadcast stop typing event
         broadcast(new TypingEvent(
             $this->conversation->id,
@@ -132,9 +130,9 @@ public function startTyping()
             ->where('user_id', $this->receiver_id)
             ->where('typing_at', '>=', now()->subSeconds(3))
             ->first();
-            
-        $this->typingIndicator = $typing 
-            ? User::find($this->receiver_id)->name . ' is typing...' 
+
+        $this->typingIndicator = $typing
+            ? User::find($this->receiver_id)->name . ' is typing...'
             : null;
     }
 
@@ -179,12 +177,10 @@ private function formatMessage($message)
                 // User started typing - show indicator for 3 seconds
                 $this->typingIndicator = User::find($event['userId'])->name . ' is typing...';
                 $this->dispatch('typingUpdated');
-                
-                // Automatically hide after 3 seconds
-                // $this->setTimeout(function() {
-                //     $this->typingIndicator = null;
-                //     $this->dispatch('typingUpdated');
-                // }, 3000);
+
+                $this->dispatch('startTypingTimeout');
+
+
             } else {
                 // User stopped typing - hide immediately
                 $this->typingIndicator = null;
@@ -192,6 +188,8 @@ private function formatMessage($message)
             }
         }
     }
+
+
 
     public function listenForMessage($event){
         // dd($event);
@@ -202,18 +200,15 @@ private function formatMessage($message)
 
     }
 
-
-
-
-
 };
 ?>
 
 <div class="flex flex-col w-full">
     {{--
     <!-- Chat Header -->@dd($messages) --}}
-    <div class="p-4 border-b border-border bg-card flex items-center justify-between pb-3"
+    <div class="p-4  bg-card flex items-center justify-between pb-3"
     >
+
         <div class="flex items-center space-x-3">
             <img src="" class="w-10 h-10 rounded-full object-cover" alt="Contact">
             <div>
@@ -250,7 +245,7 @@ private function formatMessage($message)
             </flux:menu>
         </flux:dropdown>
     </div>
-
+    <flux:separator />
     <!-- Messages Area -->
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
         x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
@@ -290,14 +285,16 @@ private function formatMessage($message)
     </div>
 
     <!-- Message Input -->
-    <div class="p-4 border-t border-border bg-card" >
+    <flux:separator />
+    <div class="p-4  bg-card" >
         <div class="flex items-center space-x-3">
 
             <flux:button icon="paperclip" class="p-2"></flux:button>
 
-            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage" wire:keydown="startTyping"
+            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage()" wire:keydown="startTyping()"  wire:keydown.debounce.2000ms="stopTyping()"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
             <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
         </div>
     </div>
+
 </div>

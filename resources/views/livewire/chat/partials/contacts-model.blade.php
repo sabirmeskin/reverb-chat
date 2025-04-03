@@ -7,7 +7,7 @@ use App\Models\ConversationParticipant;
 use App\Models\Message;
 new class extends Component {
     public $users ;
-
+    public $search = '';
     public function mount(){
         $this->users = User::all()->except(auth()->id());
     }
@@ -45,28 +45,32 @@ new class extends Component {
 
     $this->dispatch('conversationStarted', $conversation->id);
 
-
 }
 
+    public function search(){
+        $this->users = User::where('name', 'like', '%'.$this->search.'%')->get()->except(auth()->id());
+    }
 
 }; ?>
 
 <div>
     <flux:modal name="contacts" class="w-96">
         <div>
-            <flux:heading size="lg">Conversation</flux:heading>
-            <flux:text class="mt-2">Choisissez les utilisateurs .</flux:text>
+            <flux:heading size="lg">Conversation Privée</flux:heading>
+            {{-- <flux:text class="mt-2">Choisissez les utilisateurs :</flux:text> --}}
         </div>
         <div>
 
-            <div class="flex justify-between items-center">
-                <flux:heading>Contacts</flux:heading>
-            </div>
+            <flux:input
+                type="text"
+                placeholder="Rechercher un utilisateur"
+                class="mt-2 mb-4"
+                wire:model.debounce.500ms="search()" />
             <flux:separator class="mt-2 mb-4" variant="subtle" />
         </div>
     <ul>
         @foreach($users as $user)
-            <li wire:click='startConversation({{ $user->id }})'>{{ $user->name }}</li>
+            <li wire:click='startConversation({{ $user->id }})' x-on:click="$flux.modal('contacts').close()">{{ $user->name }}</li>
         @endforeach
     </ul>
     </flux:modal>
