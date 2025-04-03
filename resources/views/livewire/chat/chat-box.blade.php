@@ -19,6 +19,7 @@ new class extends Component {
     public $sender_id;
     public $typingIndicator = null;
     public $typingTimeout = null;
+    public $istyping = false;
 
 
     public function mount($conversationId)
@@ -86,7 +87,7 @@ public function startTyping()
                 'typing_at' => now(),
             ]
         );
-        
+
         // Broadcast typing event
         broadcast(new TypingEvent(
             $this->conversation->id,
@@ -99,8 +100,8 @@ public function startTyping()
         //     $this->typingTimeout = null;
         // }
         
+            // $this->stopTyping();
         // $this->typingTimeout = $this->setTimeout(function() {
-        //     $this->stopTyping();
         // }, 3000);
     }
 
@@ -117,7 +118,7 @@ public function startTyping()
             $this->sender_id,
             false
         ))->toOthers();
-        
+
         // Clear timeout
         if ($this->typingTimeout) {
             $this->typingTimeout = null;
@@ -172,7 +173,7 @@ private function formatMessage($message)
     }
     public function listenForTyping($event)
     {
-        dd($event);
+        // dd($event);
         if ($event['userId'] != $this->sender_id) {
             if ($event['isTyping']) {
                 // User started typing - show indicator for 3 seconds
@@ -180,10 +181,10 @@ private function formatMessage($message)
                 $this->dispatch('typingUpdated');
                 
                 // Automatically hide after 3 seconds
-                $this->setTimeout(function() {
-                    $this->typingIndicator = null;
-                    $this->dispatch('typingUpdated');
-                }, 3000);
+                // $this->setTimeout(function() {
+                //     $this->typingIndicator = null;
+                //     $this->dispatch('typingUpdated');
+                // }, 3000);
             } else {
                 // User stopped typing - hide immediately
                 $this->typingIndicator = null;
@@ -279,7 +280,7 @@ private function formatMessage($message)
         @endif
         @endforeach
         <!-- Typing Indicator -->
-        <div 
+        <div wire:show="typingIndicator" wire:loading.remove wire:target="typingIndicator"
              class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">

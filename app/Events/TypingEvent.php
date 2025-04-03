@@ -51,8 +51,8 @@ class TypingEvent implements ShouldBroadcastNow
         return new PrivateChannel('conversation.' . $this->conversationId);
     }
 
-    public function broadcastAs()
-    {
-        return 'TypingEvent';
-    }
+    // public function broadcastAs()
+    // {
+    //     return 'TypingEvent';
+    // }
 }
