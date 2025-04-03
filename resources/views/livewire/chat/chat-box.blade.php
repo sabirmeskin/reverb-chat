@@ -59,7 +59,7 @@ public function sendMessage()
         $newMessage = Message::create([
             "conversation_id" => $this->conversation->id, // ✅ Link message to the conversation
             "sender_id"       => $this->sender_id ?? auth()->id(),
-            "receiver_id"     => $this->receiver_id, 
+            "receiver_id"     => $this->receiver_id,
             "body"            => trim($this->message),
             "type"            => "text",
         ]);
@@ -137,17 +137,6 @@ public function startTyping()
             : null;
     }
 
-private function formatMessage($message)
-{
-    return [
-        'id' => $message->id,
-        'body' => $message->body,
-        'type' => $message->type,
-        'sender_id' => $message->sender_id,
-        'receiver_id' => $message->receiver_id,
-        'created_at' => $message->created_at->format('Y-m-d H:i:s'),
-    ];
-}
 
 
     public function chatMessage($message){

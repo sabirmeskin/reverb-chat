@@ -47,7 +47,7 @@ new class extends Component {
           $this->dispatch('scroll-bottom');
 
         }
-  
+
 
 };
 
@@ -64,13 +64,13 @@ new class extends Component {
         >
             <div class="flex flex-row w-full items-center justify-center space-x-5 ">
                 <flux:modal.trigger name="contacts">
-                    <flux:button icon="users">Contacts</flux:button>
+                    <flux:button icon="message-square-plus">Contacts</flux:button>
                 </flux:modal.trigger>
 
                 @livewire('chat.partials.group-modal')
                 @livewire('chat.partials.contacts-model')
                 <flux:modal.trigger name="edit-profile">
-                    <flux:button icon="user">Groupe</flux:button>
+                    <flux:button icon="users">Groupe</flux:button>
                 </flux:modal.trigger>
 
             </div>
@@ -105,31 +105,6 @@ new class extends Component {
         </flux:navlist>
         <flux:separator />
 
-        {{-- <div class="overflow-y-auto h-[calc(100vh-200px)]">
-            <!-- Contact List -->
-            @foreach ($users as $contact)
-            <div class="cursor-pointer hover:bg-gray-100 p-3 dark:hover:bg-gray-700"
-                wire:click="setUser({{ $contact->id }})">
-                <div class="flex items-center space-x-3">
-                    <img src="" alt="{{ $contact->name }}" class="w-10 h-10 rounded-full object-cover">
-
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-foreground">{{ $contact->name }}</h3>
-                        <p class="text-sm text-muted-foreground truncate">
-                            {{ $contact->latestMessage->body ?? 'No messages yet' }}
-                        </p>
-                    </div>
-                    <span class="text-xs text-muted-foreground">
-                        {{ optional($contact->latestMessage)->created_at ?
-                        $contact->latestMessage->created_at->diffForHumans() : '' }}
-                    </span>
-                </div>
-            </div>
-            <flux:separator />
-
-            @endforeach
-
-        </div> --}}
 
         <div class="p-4 border-t border-border">
             <div class="flex space-x-2.5 flex-wrap space-y-2">
