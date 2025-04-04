@@ -21,7 +21,6 @@ new class extends Component {
     public $typingTimeout = null;
     public $istyping = false;
 
-
     public function mount($conversationId)
 {
     $conversation = Conversation::find($conversationId);
@@ -205,8 +204,7 @@ private function formatMessage($message)
 <div class="flex flex-col w-full">
     {{--
     <!-- Chat Header -->@dd($messages) --}}
-    <div class="p-4  bg-card flex items-center justify-between pb-3"
-    >
+    <div class="p-4  bg-card flex items-center justify-between pb-3">
 
         <div class="flex items-center space-x-3">
             <img src="" class="w-10 h-10 rounded-full object-cover" alt="Contact">
@@ -218,7 +216,8 @@ private function formatMessage($message)
             @endif
             @if (!$conversation->isGroup())
             <div>
-                <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=', auth()->id())->first()->name }}</h2>
+                <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=',
+                    auth()->id())->first()->name }}</h2>
                 <p class="text-sm text-green">Online</p>
             </div>
             @endif
@@ -228,12 +227,18 @@ private function formatMessage($message)
             <flux:button icon="ellipsis-vertical"></flux:button>
 
             <flux:menu>
-               @if ($conversation->isGroup())
-                <flux:menu.item icon="pencil">Edit Group</flux:menu.item>
+                @if ($conversation->isGroup())
+                {{-- <flux:menu.item icon="pencil" x-on:click="$flux.modal('editGroup').show()">Edit Group
+                </flux:menu.item> --}}
+                <flux:menu.item>
+                    <flux:modal.trigger name="editGroup">
+                        <flux:button icon="user">Groupe</flux:button>
+                    </flux:modal.trigger>
+                </flux:menu.item>
 
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
+                @endif
 
-               @endif
                 <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
 
                 <flux:menu.separator />
@@ -252,7 +257,8 @@ private function formatMessage($message)
                     <flux:menu.checkbox>Archived</flux:menu.checkbox>
                 </flux:menu.submenu> --}}
 
-                {{-- <flux:menu.separator /> --}}
+                {{--
+                <flux:menu.separator /> --}}
 
                 <flux:menu.item variant="danger" icon="trash">Supprimer</flux:menu.item>
             </flux:menu>
@@ -261,9 +267,7 @@ private function formatMessage($message)
     <flux:separator />
     <!-- Messages Area -->
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
-
-        >
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
@@ -288,26 +292,29 @@ private function formatMessage($message)
         @endif
         @endforeach
         <!-- Typing Indicator -->
-        <div wire:show="typingIndicator" wire:loading.remove wire:target="typingIndicator"
-             class="flex items-start space-x-2">
-            <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
-            <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
-                <p class="text-foreground italic" wire:text="typingIndicator">  </p>
-            </div>
-        </div>
+        @if ($typingIndicator)
+<div class="flex items-start space-x-2">
+    <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
+    <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
+        <p class="text-foreground italic">{{ $typingIndicator }}</p>
+    </div>
+</div>
+@endif
+
     </div>
 
     <!-- Message Input -->
     <flux:separator />
-    <div class="p-4  bg-card" >
+    <div class="p-4  bg-card">
         <div class="flex items-center space-x-3">
 
             <flux:button icon="paperclip" class="p-2"></flux:button>
 
-            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage()" wire:keydown="startTyping()"  wire:keydown.debounce.2000ms="stopTyping()"
+            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage()"
+                wire:keydown="startTyping()" wire:keydown.debounce.2000ms="stopTyping()"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
             <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
         </div>
     </div>
-
+    @livewire('chat.partials.edit-group-modal')
 </div>

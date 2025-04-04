@@ -1,5 +1,3 @@
 <x-layouts.app title="Chat">
-    <div class="flex h-full w-full  flex-row gap-3 ">
-        @livewire('chat/sidebar' )
-    </div>
+    @livewire('chat.chat-layout')
 </x-layouts.app>

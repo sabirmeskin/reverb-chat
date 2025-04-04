@@ -30,6 +30,8 @@ new class extends Component {
     {
         $this->conversation = auth()->user()->conversations()->find($conversationId);
         // dd($this->conversation->participants);
+
+        $this->dispatch('conversationSelected',$conversationId);
     }
 
     #[On('conversationStarted')]
@@ -68,6 +70,7 @@ new class extends Component {
                 </flux:modal.trigger>
 
                 @livewire('chat.partials.group-modal')
+
                 @livewire('chat.partials.contacts-model')
                 <flux:modal.trigger name="group">
                     <flux:button icon="user">Groupe</flux:button>
@@ -125,31 +128,7 @@ new class extends Component {
         </flux:navlist>
         <flux:separator />
 
-        {{-- <div class="overflow-y-auto h-[calc(100vh-200px)]">
-            <!-- Contact List -->
-            @foreach ($users as $contact)
-            <div class="cursor-pointer hover:bg-gray-100 p-3 dark:hover:bg-gray-700"
-                wire:click="setUser({{ $contact->id }})">
-                <div class="flex items-center space-x-3">
-                    <img src="" alt="{{ $contact->name }}" class="w-10 h-10 rounded-full object-cover">
 
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-foreground">{{ $contact->name }}</h3>
-                        <p class="text-sm text-muted-foreground truncate">
-                            {{ $contact->latestMessage->body ?? 'No messages yet' }}
-                        </p>
-                    </div>
-                    <span class="text-xs text-muted-foreground">
-                        {{ optional($contact->latestMessage)->created_at ?
-                        $contact->latestMessage->created_at->diffForHumans() : '' }}
-                    </span>
-                </div>
-            </div>
-            <flux:separator />
-
-            @endforeach
-
-        </div> --}}
 
         <div class="p-4 ">
             <div class="flex space-x-2.5 flex-wrap space-y-2">
@@ -174,7 +153,7 @@ new class extends Component {
     </div>
 
     <!-- Dynamically render chat-box only if a user is selected -->
-    <div class="flex-1">
+    {{-- <div class="flex-1">
         @if ($conversation)
         <div wire:loading.flex class="flex items-center justify-center h-full">
             <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -184,12 +163,12 @@ new class extends Component {
             </svg>
         </div>
         <div wire:loading.remove>
-            @livewire('chat.chat-box', ['conversationId' => $conversation->id], key($conversation->id))
-        </div>
+            <livewire:chat.chat-box :conversation-id="$conversation->id" :key="$conversation->id" />
+            </div>
         @else
         <div class="flex items-center justify-center h-full text-muted-foreground">
             Choisissez un contact pour démarrer la conversation
         </div>
         @endif
-    </div>
+    </div> --}}
 </div>
