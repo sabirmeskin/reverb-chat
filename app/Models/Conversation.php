@@ -12,7 +12,7 @@ class Conversation extends Model
     {
         return $this->belongsToMany(User::class, 'conversation_participants');
     }
-  
+
     public function messages()
     {
         return $this->hasMany(Message::class);
@@ -40,5 +40,10 @@ class Conversation extends Model
     public function activeParticipants()
     {
         return $this->participants->where('is_online', true)->get();
+    }
+
+    public function isGroup()
+    {
+        return $this->type === 'group';
     }
 }

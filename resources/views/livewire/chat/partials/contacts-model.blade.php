@@ -72,7 +72,7 @@ new class extends Component {
 
             <flux:separator class="mt-4 mb-4" variant="subtle" />
 
-            <div class="space-y-2 overflow-y-scroll">
+            <div class="space-y-2 overflow-y-scroll h-50">
                 @foreach($users as $user)
                     <flux:button
                         wire:click='startConversation({{ $user->id }})'
