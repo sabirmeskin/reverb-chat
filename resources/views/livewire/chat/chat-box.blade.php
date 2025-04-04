@@ -228,8 +228,7 @@ private function formatMessage($message)
 ?>
 
 <div class="flex flex-col w-full">
-    {{--
-    <!-- Chat Header -->@dd($messages) --}}
+
     <div class="p-4  bg-card flex items-center justify-between pb-3">
 
         <div class="flex items-center space-x-3">
