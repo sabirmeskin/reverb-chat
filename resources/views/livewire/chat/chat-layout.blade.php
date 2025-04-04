@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 new class extends Component {
     public $conversation;
 
+
    #[On('conversationSelected')]
    public function conversationSelected($conversationId){
         $this->conversation = auth()->user()->conversations()->find($conversationId);

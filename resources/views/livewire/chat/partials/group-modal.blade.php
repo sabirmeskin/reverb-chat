@@ -3,13 +3,13 @@ use Livewire\Volt\Component;
 use App\Models\User;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
-
+use Flux\Flux;
 new class extends Component {
     public $users = [];
     public $search = '';
     public $selectedUsers = [];
     public $groupName = '';
-
+    public $error = "";
     public function mount()
     {
         $this->updateUsers();
@@ -35,6 +35,13 @@ new class extends Component {
     public function startConversation()
     {
         $authUser = auth()->user();
+        if (count($this->selectedUsers) == 0) {
+
+          $this->error = "Veuillez sélectionner au moins un utilisateur.";
+
+            return;
+        }
+        $this->error = "";
 
         if (count($this->selectedUsers) == 1) {
             // Private conversation
@@ -54,7 +61,7 @@ new class extends Component {
                     ['conversation_id' => $conversation->id, 'user_id' => $userId, 'role' => 'member'],
                 ]);
             }
-        } else {
+            } else {
             // Group conversation
             if (empty($this->groupName)) {
                 // Generate default group name from first 3 users
@@ -83,8 +90,8 @@ new class extends Component {
         }
 
         $this->dispatch('conversationStarted', $conversation->id);
-        $this->dispatch('closeModal');
-
+        $this->dispatch('closeModal', 'group');
+        // Optionally, you can redirect to the conversation page
         // Reset fields
         $this->selectedUsers = [];
         $this->groupName = '';
@@ -160,9 +167,17 @@ new class extends Component {
                 class="mt-4 w-full"
                 variant="primary"
                 wire:click="startConversation()"
-                x-on:click="$flux.modal('group').close()">
+                >
                 Démarrer la conversation
             </flux:button>
+            <span class="text-red-500">{{$error}}</span>
         </div>
     </flux:modal>
+    @script
+    <script>
+        $wire.on('closeModal', () => {
+            $flux.modal('group').close();
+        });
+    </script>
+    @endscript
 </div>

@@ -12,7 +12,6 @@ class ChatController extends Controller
         $users = User::where('id', '!=' , Auth::user()->id)->get();
         return view('dashboard',compact('users'));
     }
-
     public function chat(){
 
             return view('chat');
