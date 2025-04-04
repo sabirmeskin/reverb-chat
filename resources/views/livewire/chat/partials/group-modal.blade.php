@@ -3,7 +3,6 @@ use Livewire\Volt\Component;
 use App\Models\User;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
-use Flux\Flux;
 new class extends Component {
     public $users = [];
     public $search = '';
@@ -36,8 +35,8 @@ new class extends Component {
     {
         $authUser = auth()->user();
         if (count($this->selectedUsers) == 0) {
+            $this->addError('noUsers', 'Veuillez sélectionner au moins un utilisateur.');
 
-          $this->error = "Veuillez sélectionner au moins un utilisateur.";
 
             return;
         }
@@ -129,7 +128,7 @@ new class extends Component {
                 wire:keyup="updateUsers" />
 
             <flux:separator class="mt-4 mb-4" variant="subtle" />
-
+            <flux:error name="noUsers" />
             <!-- Selected Users -->
             <div class="flex flex-wrap gap-2 mb-4">
                 @foreach($selectedUsers as $userId)
@@ -170,7 +169,7 @@ new class extends Component {
                 >
                 Démarrer la conversation
             </flux:button>
-            <span class="text-red-500">{{$error}}</span>
+            {{-- <span class="text-red-500">{{$error}}</span> --}}
         </div>
     </flux:modal>
     @script

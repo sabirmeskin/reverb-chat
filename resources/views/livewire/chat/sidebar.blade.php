@@ -50,6 +50,11 @@ new class extends Component {
 
         }
 
+      #[On('conversationUpdated')]
+      public function refreshList()
+    {
+        $this->loadConversations();
+    }
 
 };
 

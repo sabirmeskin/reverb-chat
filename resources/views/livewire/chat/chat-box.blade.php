@@ -229,10 +229,8 @@ private function formatMessage($message)
                 @if ($conversation->isGroup())
                 {{-- <flux:menu.item icon="pencil" x-on:click="$flux.modal('editGroup').show()">Edit Group
                 </flux:menu.item> --}}
-                <flux:menu.item>
-                    <flux:modal.trigger name="editGroup">
-                        <flux:button icon="user">Groupe</flux:button>
-                    </flux:modal.trigger>
+                <flux:menu.item icon="pencil" x-on:click="$flux.modal('editGroup').show()">
+                    Editer le groupe
                 </flux:menu.item>
 
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
@@ -299,5 +297,5 @@ private function formatMessage($message)
             <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
         </div>
     </div>
-    @livewire('chat.partials.edit-group-modal')
+    <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">
 </div>
