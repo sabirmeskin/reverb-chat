@@ -132,7 +132,7 @@ public function startTyping()
             ->first();
 
         $this->typingIndicator = $typing
-            ? User::find($this->receiver_id)->name . ' is typing...'
+            ? User::find($this->receiver_id)->name . ' écrit...'
             : null;
     }
 
@@ -175,7 +175,7 @@ private function formatMessage($message)
         if ($event['userId'] != $this->sender_id) {
             if ($event['isTyping']) {
                 // User started typing - show indicator for 3 seconds
-                $this->typingIndicator = User::find($event['userId'])->name . ' is typing...';
+                $this->typingIndicator = User::find($event['userId'])->name . ' écrit...';
                 $this->dispatch('typingUpdated');
 
                 $this->dispatch('startTypingTimeout');
@@ -196,7 +196,6 @@ private function formatMessage($message)
         $chatMessage = Message::whereid($event['id'])
         ->with('sender:id,name', 'receiver:id,name')->first();
         $this->chatMessage($chatMessage);
-        $this->dispatch('messageSent');
 
     }
 
@@ -211,21 +210,35 @@ private function formatMessage($message)
 
         <div class="flex items-center space-x-3">
             <img src="" class="w-10 h-10 rounded-full object-cover" alt="Contact">
+            @if ($conversation->isGroup())
+            <div>
+                <h2 class="font-semibold text-foreground">{{ $conversation->name }}</h2>
+
+            </div>
+            @endif
+            @if (!$conversation->isGroup())
             <div>
                 <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=', auth()->id())->first()->name }}</h2>
                 <p class="text-sm text-green">Online</p>
             </div>
+            @endif
         </div>
 
         <flux:dropdown>
             <flux:button icon="ellipsis-vertical"></flux:button>
 
             <flux:menu>
-                <flux:menu.item icon="plus">New post</flux:menu.item>
+               @if ($conversation->isGroup())
+                <flux:menu.item icon="pencil">Edit Group</flux:menu.item>
+
+                <flux:menu.item icon="user">View Group Members</flux:menu.item>
+
+               @endif
+                <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
 
                 <flux:menu.separator />
 
-                <flux:menu.submenu heading="Sort by">
+                {{-- <flux:menu.submenu heading="Sort by">
                     <flux:menu.radio.group>
                         <flux:menu.radio checked>Name</flux:menu.radio>
                         <flux:menu.radio>Date</flux:menu.radio>
@@ -237,11 +250,11 @@ private function formatMessage($message)
                     <flux:menu.checkbox checked>Draft</flux:menu.checkbox>
                     <flux:menu.checkbox checked>Published</flux:menu.checkbox>
                     <flux:menu.checkbox>Archived</flux:menu.checkbox>
-                </flux:menu.submenu>
+                </flux:menu.submenu> --}}
 
-                <flux:menu.separator />
+                {{-- <flux:menu.separator /> --}}
 
-                <flux:menu.item variant="danger" icon="trash">Delete</flux:menu.item>
+                <flux:menu.item variant="danger" icon="trash">Supprimer</flux:menu.item>
             </flux:menu>
         </flux:dropdown>
     </div>
