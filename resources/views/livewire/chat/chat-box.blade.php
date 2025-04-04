@@ -75,7 +75,8 @@ public function sendMessage()
         return;
     }
 
-    if (empty(trim($this->message)) || empty($this->files)) {
+    if (empty(trim($this->message)) && empty($this->files)) {
+      
         session()->flash('error', 'Le message ne peut pas être vide.');
         return;
     }
@@ -93,7 +94,7 @@ public function sendMessage()
                 'type' => 'media',
             ]);
             foreach ($this->files as $file) {
-            $newMessage->addMedia($file)->toMediaCollection('chat');
+            $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
         }
         }
         
@@ -180,7 +181,6 @@ private function formatMessage($message)
         'created_at' => $message->created_at->format('Y-m-d H:i:s'),
     ];
 }
-
 
     public function chatMessage($message){
 
@@ -284,8 +284,19 @@ private function formatMessage($message)
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
                 <p class="text-primary-foreground">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
-                <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                <a href="{{$msg->getFirstMediaUrl('chat') }}">
+                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                </a>
                 @endif
+
+                {{-- @if($media = $msg->getFirstMedia('chat'))
+                <img src="{{ $media->getUrl() }}" 
+                    alt="{{ $media->name }}"
+                    class="w-32 h-32 rounded-lg">
+                <div class="text-xs text-gray-500">
+                    Actual path: {{ $media->getPath() }}
+                </div>
+                @endif --}}
                 <span class="text-xs text-primary-foreground/80 mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}
                 </span>
@@ -298,7 +309,9 @@ private function formatMessage($message)
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
                 <p class="text-foreground">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
-                <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                <a href="{{$msg->getFirstMediaUrl('chat') }}">
+                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                </a>
                 @endif
                 <span class="text-xs text-muted-foreground mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}</span>
