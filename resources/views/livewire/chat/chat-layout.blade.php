@@ -16,7 +16,7 @@ new class extends Component {
 <div>
         <div class="flex flex-row gap-3">
         <livewire:chat.sidebar />
-        <div class="w-full">
+        <div class="w-full ">
             @if (isset($conversation))
 
             <div wire:loading.flex class="flex items-center justify-center h-full">
