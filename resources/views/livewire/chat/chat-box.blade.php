@@ -85,6 +85,11 @@ public function sendMessage()
     }
 }
 
+    #[On('conversationUpdated')]
+    public function refreshList()
+    {
+        $this->mount($this->conversation->id);
+    }
 public function startTyping()
     {
         // Update typing_at timestamp
@@ -255,10 +260,8 @@ private function formatMessage($message)
                 @if ($conversation->isGroup())
                 {{-- <flux:menu.item icon="pencil" x-on:click="$flux.modal('editGroup').show()">Edit Group
                 </flux:menu.item> --}}
-                <flux:menu.item>
-                    <flux:modal.trigger name="editGroup">
-                        <flux:button icon="user">Groupe</flux:button>
-                    </flux:modal.trigger>
+                <flux:menu.item icon="pencil" x-on:click="$flux.modal('editGroup').show()">
+                    Editer le groupe
                 </flux:menu.item>
 
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
@@ -270,22 +273,6 @@ private function formatMessage($message)
 
                 <flux:menu.separator />
 
-                {{-- <flux:menu.submenu heading="Sort by">
-                    <flux:menu.radio.group>
-                        <flux:menu.radio checked>Name</flux:menu.radio>
-                        <flux:menu.radio>Date</flux:menu.radio>
-                        <flux:menu.radio>Popularity</flux:menu.radio>
-                    </flux:menu.radio.group>
-                </flux:menu.submenu>
-
-                <flux:menu.submenu heading="Filter">
-                    <flux:menu.checkbox checked>Draft</flux:menu.checkbox>
-                    <flux:menu.checkbox checked>Published</flux:menu.checkbox>
-                    <flux:menu.checkbox>Archived</flux:menu.checkbox>
-                </flux:menu.submenu> --}}
-
-                {{--
-                <flux:menu.separator /> --}}
 
                 <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer</flux:menu.item>
             </flux:menu>
@@ -364,5 +351,5 @@ private function formatMessage($message)
             <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
         </div>
     </div>
-    @livewire('chat.partials.edit-group-modal')
+    <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">
 </div>
