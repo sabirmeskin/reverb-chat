@@ -5,6 +5,7 @@ use Livewire\WithFileUploads;
 use Livewire\Volt\Component;
 use App\Models\Message;
 use App\Models\TypingIndicator;
+use App\Models\ArchivedConversation;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -38,33 +39,10 @@ new class extends Component {
         $this->messages = $this->conversation->messages()
             ->orderBy('created_at', 'asc')
             ->get();
-            // ->map(function ($message) {
-            //     return $this->formatMessage($message);
-            // })->toArray();
     }
     $this->checkTypingStatus();
 
 }
-public function save()
-    {
-        if (empty($this->files)) {
-            session()->flash('error', 'Veuillez sélectionner un fichier à télécharger.');
-            return;
-        }
-        foreach ($this->files as $file) {
-            $msg = Message::create([
-                'conversation_id' => $this->conversation->id,
-                'sender_id' => $this->sender_id,
-                'receiver_id' => $this->receiver_id,
-                'body' => ' ',
-                'type' => 'media',
-            ]);
-            $msg->addMedia($file)->toMediaCollection('chat');
-            $this->dispatch('messageSent');
-            $this->files = [];
-            $this->message = '';
-        }
-    }
 
 public function sendMessage()
 {
@@ -75,7 +53,6 @@ public function sendMessage()
     }
 
     if (empty(trim($this->message)) && empty($this->files)) {
-      
         session()->flash('error', 'Le message ne peut pas être vide.');
         return;
     }
@@ -224,6 +201,29 @@ private function formatMessage($message)
 
     }
 
+    public function archiveConversationt()
+    {
+        $this->conversation->update([
+            'archived_at' => now(),
+        ]);
+        $archivedConversation = ArchivedConversation::create([
+            'user_id' => auth()->id(),
+            'conversation_id' => $this->conversation->id,
+            'archived_at' => now(),
+
+        ]);
+    }
+    public function deleteConversationt()
+    {
+    //    Conversation::find($this->conversation->id)->delete();
+        $this->dispatch('conversationDeleted');
+    }
+    #[On('conversationDeleted')]
+  public function conversationDeleted(){
+    dd('test');
+    return view('livewire.chat.chat-layout');
+  }
+
 };
 ?>
 
@@ -264,7 +264,9 @@ private function formatMessage($message)
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
                 @endif
 
-                <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" >Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" wire:click="archiveConversationt()" >Archiver cette conversation</flux:menu.item>
+
 
                 <flux:menu.separator />
 
@@ -285,12 +287,13 @@ private function formatMessage($message)
                 {{--
                 <flux:menu.separator /> --}}
 
-                <flux:menu.item variant="danger" icon="trash">Supprimer</flux:menu.item>
+                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer</flux:menu.item>
             </flux:menu>
         </flux:dropdown>
     </div>
     <flux:separator />
     <!-- Messages Area -->
+    
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
         x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
         @foreach ($messages as $msg)
@@ -344,8 +347,8 @@ private function formatMessage($message)
     </div>
 </div>
 @endif
-
     </div>
+
 
     <!-- Message Input -->
     <flux:separator />
