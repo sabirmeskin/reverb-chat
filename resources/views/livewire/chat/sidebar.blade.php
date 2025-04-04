@@ -53,6 +53,7 @@ new class extends Component {
       #[On('conversationUpdated')]
       public function refreshList()
     {
+        // dd('refresh');
         $this->loadConversations();
     }
 

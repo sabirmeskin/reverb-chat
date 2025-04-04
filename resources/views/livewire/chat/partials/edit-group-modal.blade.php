@@ -14,13 +14,7 @@ new class extends Component {
 
     public function mount($conversationId)
     {
-        $this->conversationId = $conversationId;
-        $conversation = Conversation::findOrFail($conversationId);
-
-        $this->groupName = $conversation->name;
-        $this->selectedUsers = $conversation->participants()->pluck('user_id')->toArray();
-
-        $this->updateUsers();
+        $this->loadConversation($conversationId);
     }
 
     public function updateUsers()
@@ -69,13 +63,30 @@ new class extends Component {
 
         $conversation->participants()->sync($participants);
 
-        $this->dispatch('conversationUpdated', $conversation->id);
+        $this->dispatch('conversationUpdated');
+
         $this->dispatch('closeModal', 'group');
         // Reset fields
-        $this->selectedUsers = [];
-        $this->groupName = '';
+        // $this->selectedUsers = [];
+        // $this->groupName = '';
+
     }
+
+    public function loadConversation($conversationId)
+{
+    $this->conversationId = $conversationId;
+    $conversation = Conversation::findOrFail($conversationId);
+
+    $this->groupName = $conversation->name;
+    $this->selectedUsers = $conversation->participants()->pluck('user_id')->toArray();
+
+    $this->updateUsers();
+}
+
+
+
 };
+
 ?>
 
 <div>
@@ -116,7 +127,7 @@ new class extends Component {
                     @endphp
                     @if ($user)
                         <div class="bg-gray-200 px-2 py-1 rounded-full flex items-center dark:bg-gray-700">
-                            <img src="{{ $user->avatar }}" class="w-6 h-6 rounded-full object-cover mr-2" alt="User">
+                            <img src="" class="w-6 h-6 rounded-full object-cover mr-2" alt="User">
                             {{ $user->name }}
                             <flux:button size="xs" variant="subtle" icon="x" class="ml-2 rounded-full" wire:click="toggleUserSelection({{ $user->id }})"></flux:button>
                         </div>

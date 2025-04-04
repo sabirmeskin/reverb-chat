@@ -74,6 +74,11 @@ public function sendMessage()
     }
 }
 
+    #[On('conversationUpdated')]
+    public function refreshList()
+    {
+        $this->mount($this->conversation->id);
+    }
 public function startTyping()
     {
         // Update typing_at timestamp
