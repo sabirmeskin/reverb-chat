@@ -4,6 +4,7 @@ use Livewire\Volt\Component;
 use App\Models\User;
 use App\Models\Message;
 use Livewire\Attributes\On;
+use App\Models\Conversation;
 
 new class extends Component {
 
@@ -12,18 +13,43 @@ new class extends Component {
     public $conversation ;
     public $presence ;
 
+
+
     public function loadConversations()
     {
-        $this->conversations = auth()->user()->conversations()
-        ->with(['participants', 'lastMessage'])
-        ->get();
-    }
+        // Check if the user is authenticated
+        if (!auth()->check()) {
+            return;
+        }
 
+        // Load conversations for the authenticated user
+    $this->conversations = auth()->user()->conversations()
+        ->with(['participants', 'lastMessage'])
+        ->orderByDesc(function ($query) {
+            $query->select('created_at')
+                  ->from('messages')
+                  ->whereColumn('conversation_id', 'conversations.id')
+                  ->latest()
+                  ->limit(1);
+        })
+        ->get();
+}
+
+
+
+    // public function getListeners()
+    // {
+    //     $listeners = [];
+    //     foreach ($this->conversations as $conversation) {
+    //         $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
+    //     }
+    //     return $listeners;
+    // }
 
     public function mount()
     {
         $this->loadConversations();
-
+        $this->dispatch('conversationUpdated');
     }
 
 
@@ -42,14 +68,6 @@ new class extends Component {
             $this->loadConversations();
         }
 
-
-    #[On('messageSent')]
-    public function handleMessageSent()
-        {
-            $this->loadConversations();
-          $this->dispatch('scroll-bottom');
-
-        }
 
       #[On('conversationUpdated')]
       public function refreshList()
@@ -70,6 +88,7 @@ new class extends Component {
 
     public function getListeners()
     {
+        
         return [
             "echo-presence:chat,joining" => 'userLoggedIn',
             "echo-presence:chat,leaving" => 'userLoggedOut',
@@ -81,7 +100,7 @@ new class extends Component {
 
 ?>
 
-<div class="flex h-full  flex-row gap-3">
+<div class="flex h-full  flex-row gap-3" >
     <div class=" border-r border-gray-300 pr-2 dark:border-gray-700">
 
         <div class="p-4"
