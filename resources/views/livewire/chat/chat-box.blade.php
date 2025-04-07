@@ -46,7 +46,6 @@ new class extends Component {
 
 public function sendMessage()
 {
-
     if (!auth()->check()) {
         session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
         return;
@@ -58,6 +57,7 @@ public function sendMessage()
     }
 
     try {
+        // Create a new message in the database
         $newMessage = Message::create([
             "conversation_id" => $this->conversation->id,
             "sender_id"       => $this->sender_id ?? auth()->id(),
@@ -65,25 +65,32 @@ public function sendMessage()
             "body"            => trim($this->message),
             "type"            => "text",
         ]);
+
+        // Handle media files if they exist
         if (!empty($this->files)) {
-            $newMessage->update([
-                'type' => 'media',
-            ]);
+            $newMessage->update(['type' => 'media']);
             foreach ($this->files as $file) {
-            $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
-        }
+                $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
+            }
         }
 
+        // Reset input fields
         $this->files = [];
         $this->message = '';
 
+        // Add the message to the chat
         $this->chatMessage($newMessage);
+
+        // Broadcast the message
         broadcast(new MessageSendEvent($newMessage))->toOthers();
+
+        // Stop typing after sending the message
         $this->stopTyping();
     } catch (\Exception $e) {
         session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
     }
 }
+
 
 public function startTyping()
     {
@@ -261,14 +268,16 @@ private function formatMessage($message)
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
                 @endif
 
-                <flux:menu.item icon="plus" >Ajouter Membre</flux:menu.item>
-                <flux:menu.item icon="plus" wire:click="archiveConversationt()" >Archiver cette conversation</flux:menu.item>
+                <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" wire:click="archiveConversationt()">Archiver cette conversation
+                </flux:menu.item>
 
 
                 <flux:menu.separator />
 
 
-                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer</flux:menu.item>
+                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer
+                </flux:menu.item>
             </flux:menu>
         </flux:dropdown>
     </div>
@@ -276,15 +285,13 @@ private function formatMessage($message)
     <!-- Messages Area -->
 
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
-
-        >
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
         <div class="flex items-start justify-end space-x-2">
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
-                <p class="text-primary-foreground">{{ $msg['body'] }}</p>
+                <p class="text-primary-foreground break-words">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
                 <a href="{{$msg->getFirstMediaUrl('chat') }}">
                     <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
@@ -292,9 +299,7 @@ private function formatMessage($message)
                 @endif
 
                 {{-- @if($media = $msg->getFirstMedia('chat'))
-                <img src="{{ $media->getUrl() }}"
-                    alt="{{ $media->name }}"
-                    class="w-32 h-32 rounded-lg">
+                <img src="{{ $media->getUrl() }}" alt="{{ $media->name }}" class="w-32 h-32 rounded-lg">
                 <div class="text-xs text-gray-500">
                     Actual path: {{ $media->getPath() }}
                 </div>
@@ -309,7 +314,7 @@ private function formatMessage($message)
         <div class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
-                <p class="text-foreground">{{ $msg['body'] }}</p>
+                <p class="text-foreground break-words">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
                 <a href="{{$msg->getFirstMediaUrl('chat') }}">
                     <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
@@ -323,28 +328,31 @@ private function formatMessage($message)
         @endforeach
         <!-- Typing Indicator -->
         @if ($typingIndicator)
-<div class="flex items-start space-x-2">
-    <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
-    <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
-        <p class="text-foreground italic">{{ $typingIndicator }}</p>
-    </div>
-</div>
-@endif
+        <div class="flex items-start space-x-2">
+            <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
+            <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
+                <p class="text-foreground italic">{{ $typingIndicator }}</p>
+            </div>
+        </div>
+        @endif
     </div>
 
 
     <!-- Message Input -->
     <flux:separator />
     <div class="p-4  bg-card">
-        <div class="flex items-center space-x-3">
+        <div>
+            <form wire:submit.prevent="sendMessage" class="flex items-center space-x-3">
+                <flux:button icon="paperclip" class="p-2">
+                    <input wire:model="files" multiple type="file" class="hidden" />
+                </flux:button>
 
-            <flux:button icon="paperclip" class="p-2">
-                <input wire:model="files" multiple type="file" class=""/>
-            </flux:button>
+                <input type="text" placeholder="Écrire un message..." wire:model.defer="message"
+                    wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping"
+                    class="flex-1 p-2 rounded-lg bg-muted text-foreground border focus:outline-none focus:ring-2">
 
-            <input type="text" placeholder="Typer un message..." wire:model="message" wire:keydown.enter="sendMessage()" wire:keydown="startTyping()"  wire:keydown.debounce.2000ms="stopTyping()"
-                class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
-            <flux:button icon="send" class="" wire:click="sendMessage"></flux:button>
+                <flux:button icon="send" type="submit"></flux:button>
+            </form>
         </div>
     </div>
     <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">

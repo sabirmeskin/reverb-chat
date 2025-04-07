@@ -133,7 +133,7 @@ new class extends Component {
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->name}}</h3>
                             <p class="text-xs text-muted-foreground truncate font-thin">
-                                {{ $convo->lastMessage->body ?? 'No messages yet' }}
+                                {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>
                         </div>
                         <span class="text-xs text-muted-foreground">
@@ -156,8 +156,8 @@ new class extends Component {
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>
-                            <p class="text-sm text-muted-foreground truncate font-thin">
-                                {{ $convo->lastMessage->body ?? 'No messages yet' }}
+                            <p class="text-sm text-muted-foreground truncate font-thin " >
+                                {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>
                         </div>
                         <span class="text-xs text-muted-foreground font-thin">
