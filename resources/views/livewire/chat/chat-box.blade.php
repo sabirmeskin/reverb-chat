@@ -82,12 +82,15 @@ public function sendMessage()
         $this->chatMessage($newMessage);
 
         // Broadcast the message
-        broadcast(new MessageSendEvent($newMessage));
+        broadcast(new MessageSendEvent($newMessage))->toOthers();
+        // Optionally, you can also broadcast the typing event
 
         // Stop typing after sending the message
         $this->stopTyping();
     } catch (\Exception $e) {
         session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
+        // Log the error for debugging
+        dd($e->getMessage());
     }
 }
 
@@ -153,17 +156,7 @@ public function startTyping()
             : null;
     }
 
-private function formatMessage($message)
-{
-    return [
-        'id' => $message->id,
-        'body' => $message->body,
-        'type' => $message->type,
-        'sender_id' => $message->sender_id,
-        'receiver_id' => $message->receiver_id,
-        'created_at' => $message->created_at->format('Y-m-d H:i:s'),
-    ];
-}
+
 
     public function chatMessage($message){
 
@@ -173,8 +166,8 @@ private function formatMessage($message)
     public function getListeners()
     {
         return [
-            "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
+            // "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
         ];
     }
 
@@ -200,11 +193,15 @@ private function formatMessage($message)
 
 
 
-    public function listenForMessage($event){
-        $chatMessage = Message::whereid($event['id'])
-        ->with('sender:id,name', 'receiver:id,name')->first();
-        $this->chatMessage($chatMessage);
+    public function listenForMessage($event)
+    {
+        $chatMessage = Message::where('id', $event['id'])
+            ->with('sender:id,name', 'receiver:id,name')
+            ->first();
 
+        if ($chatMessage) {
+            $this->messages[] = $chatMessage;
+        }
     }
 
     public function archiveConversationt()
@@ -289,7 +286,7 @@ private function formatMessage($message)
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
-        <div class="flex items-start justify-end space-x-2">
+        <div class="flex items-start justify-end space-x-2" wire:key="message-{{ $msg['id'] }}">
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
                 <p class="text-primary-foreground break-words">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
