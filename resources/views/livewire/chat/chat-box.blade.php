@@ -220,12 +220,12 @@ private function formatMessage($message)
     }
     public function deleteConversationt()
     {
-    //    Conversation::find($this->conversation->id)->delete();
+       Conversation::find($this->conversation->id)->delete();
         $this->dispatch('conversationDeleted');
     }
     #[On('conversationDeleted')]
   public function conversationDeleted(){
-    dd('test');
+
     return view('livewire.chat.chat-layout');
   }
 
