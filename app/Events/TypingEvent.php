@@ -12,7 +12,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 class TypingEvent implements ShouldBroadcastNow
-{ 
+{
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $conversationId;
@@ -33,7 +33,7 @@ class TypingEvent implements ShouldBroadcastNow
 
     public function broadcastWith()
 {
-    
+
     return [
         'conversationId' => $this->conversationId,
         'userId' => $this->userId,

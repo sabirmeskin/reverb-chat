@@ -197,7 +197,6 @@ private function formatMessage($message)
 
 
     public function listenForMessage($event){
-        // dd($event);
         $chatMessage = Message::whereid($event['id'])
         ->with('sender:id,name', 'receiver:id,name')->first();
         $this->chatMessage($chatMessage);
@@ -297,10 +296,10 @@ private function formatMessage($message)
 
             <flux:button icon="paperclip" class="p-2"></flux:button>
 
-            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage()"
-                wire:keydown="startTyping()" wire:keydown.debounce.2000ms="stopTyping()"
+            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage"
+                wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
-            <flux:button icon="send" class="" wire:click="sendMessage()"></flux:button>
+            <flux:button icon="send" class="" wire:click="sendMessage"></flux:button>
         </div>
     </div>
     <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">

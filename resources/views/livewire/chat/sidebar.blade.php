@@ -12,6 +12,8 @@ new class extends Component {
     public $conversations = [];
     public $conversation ;
 
+
+
     public function loadConversations()
     {
         // Check if the user is authenticated
