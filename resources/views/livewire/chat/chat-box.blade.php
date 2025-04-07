@@ -27,9 +27,9 @@ new class extends Component {
     $receiver = $conversation->participants()
         ->where('user_id', '!=', auth()->id())
         ->first();
-    $this->sender_id = auth()->id();
-    $this->receiver_id = $receiver->id;
-    $this->conversation = $conversation;
+        $this->sender_id = auth()->id();
+        $this->receiver_id = $receiver->id;
+        $this->conversation = $conversation;
 
     if ($this->conversation) {
         $this->messages = $this->conversation->messages()
@@ -75,11 +75,6 @@ public function sendMessage()
     }
 }
 
-    #[On('conversationUpdated')]
-    public function refreshList()
-    {
-        $this->mount($this->conversation->id);
-    }
 public function startTyping()
     {
         // Update typing_at timestamp
@@ -183,7 +178,7 @@ private function formatMessage($message)
                 $this->typingIndicator = User::find($event['userId'])->name . ' écrit...';
                 $this->dispatch('typingUpdated');
 
-                $this->dispatch('startTypingTimeout');
+
 
 
             } else {
@@ -253,7 +248,9 @@ private function formatMessage($message)
     <flux:separator />
     <!-- Messages Area -->
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
+
+        >
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
@@ -297,7 +294,7 @@ private function formatMessage($message)
             <flux:button icon="paperclip" class="p-2"></flux:button>
 
             <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage"
-                wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping"
+                wire:keydown="startTyping" wire:keydown.debounce.3000ms="stopTyping"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
             <flux:button icon="send" class="" wire:click="sendMessage"></flux:button>
         </div>

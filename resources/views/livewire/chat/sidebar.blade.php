@@ -130,7 +130,7 @@ new class extends Component {
             <flux:navlist.group heading="Contacts" expandable>
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
-                <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
+                <flux:navlist.item icon="user" iconDot="success"    badge-color="green" >
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>
