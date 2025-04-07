@@ -16,10 +16,7 @@ new class extends Component {
 
     public function loadConversations()
     {
-        // Check if the user is authenticated
-        if (!auth()->check()) {
-            return;
-        }
+
 
         // Load conversations for the authenticated user
     $this->conversations = auth()->user()->conversations()

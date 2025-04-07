@@ -64,12 +64,13 @@ public function sendMessage()
             "type"            => "text",
         ]);
 
-        $this->message = '';
 
         $this->chatMessage($newMessage);
         $this->dispatch('messageSent');
         $this->stopTyping();
-        broadcast(new MessageSendEvent($newMessage))->toOthers();
+        broadcast(new MessageSendEvent($newMessage));
+        $this->message = '';
+
     } catch (\Exception $e) {
         session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
     }
