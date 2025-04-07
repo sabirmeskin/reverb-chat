@@ -117,7 +117,10 @@ new class extends Component {
          dd($event['user']);
         // logger('User logged in event:', $event);
     }
+    public function logout(){
 
+        broadcast(new UserLoggedIn(auth()->user()));
+    }
     public function userLoggedOut($event)
     {
         $this->presence = 'danger';
@@ -229,7 +232,9 @@ new class extends Component {
 
 
                 <flux:button variant="danger" icon="log-out" href="{{ route('logout') }}"
-                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
+                    wire:clik="logout"
+                    >
 
                 </flux:button>
 
