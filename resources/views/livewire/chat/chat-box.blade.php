@@ -82,7 +82,7 @@ public function sendMessage()
         $this->chatMessage($newMessage);
 
         // Broadcast the message
-        broadcast(new MessageSendEvent($newMessage))->toOthers();
+        broadcast(new MessageSendEvent($newMessage));
 
         // Stop typing after sending the message
         $this->stopTyping();
