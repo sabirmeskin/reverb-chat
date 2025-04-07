@@ -1,16 +1,19 @@
 <?php
 use App\Events\MessageSendEvent;
 use App\Events\TypingEvent;
-
+use Livewire\WithFileUploads;
 use Livewire\Volt\Component;
 use App\Models\Message;
 use App\Models\TypingIndicator;
+use App\Models\ArchivedConversation;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use App\Models\Conversation;
 
 new class extends Component {
+    use WithFileUploads;
+
     public $user;
     public $messages = [];
     public $message = '';
@@ -20,6 +23,7 @@ new class extends Component {
     public $typingIndicator = null;
     public $typingTimeout = null;
     public $istyping = false;
+    public $files = [];
 
     public function mount($conversationId)
 {
@@ -34,10 +38,7 @@ new class extends Component {
     if ($this->conversation) {
         $this->messages = $this->conversation->messages()
             ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($message) {
-                return $this->formatMessage($message);
-            })->toArray();
+            ->get();
     }
     $this->checkTypingStatus();
 
@@ -45,32 +46,40 @@ new class extends Component {
 
 public function sendMessage()
 {
+
     if (!auth()->check()) {
         session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
         return;
     }
 
-    if (empty(trim($this->message))) {
+    if (empty(trim($this->message)) && empty($this->files)) {
         session()->flash('error', 'Le message ne peut pas être vide.');
         return;
     }
 
     try {
         $newMessage = Message::create([
-            "conversation_id" => $this->conversation->id, // ✅ Link message to the conversation
+            "conversation_id" => $this->conversation->id,
             "sender_id"       => $this->sender_id ?? auth()->id(),
             "receiver_id"     => $this->receiver_id,
             "body"            => trim($this->message),
             "type"            => "text",
         ]);
+        if (!empty($this->files)) {
+            $newMessage->update([
+                'type' => 'media',
+            ]);
+            foreach ($this->files as $file) {
+            $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
+        }
+        }
 
-
-        $this->chatMessage($newMessage);
-        $this->dispatch('messageSent');
-        $this->stopTyping();
-        broadcast(new MessageSendEvent($newMessage));
+        $this->files = [];
         $this->message = '';
 
+        $this->chatMessage($newMessage);
+        broadcast(new MessageSendEvent($newMessage))->toOthers();
+        $this->stopTyping();
     } catch (\Exception $e) {
         session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
     }
@@ -149,18 +158,9 @@ private function formatMessage($message)
     ];
 }
 
-
     public function chatMessage($message){
 
-        $this->messages[] = [
-            'id' => $message->id,
-            'body' =>$message->body,
-            'type' => $message->type,
-            'sender_id' => $message->sender_id,
-            'receiver_id' => $message->receiver_id,
-            'created_at' => $message->created_at,
-            'updated_at' => $message->updated_at
-        ];
+        $this->messages[] = $message;
     }
 
     public function getListeners()
@@ -170,6 +170,7 @@ private function formatMessage($message)
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
         ];
     }
+
     public function listenForTyping($event)
     {
         // dd($event);
@@ -198,6 +199,29 @@ private function formatMessage($message)
         $this->chatMessage($chatMessage);
 
     }
+
+    public function archiveConversationt()
+    {
+        $this->conversation->update([
+            'archived_at' => now(),
+        ]);
+        $archivedConversation = ArchivedConversation::create([
+            'user_id' => auth()->id(),
+            'conversation_id' => $this->conversation->id,
+            'archived_at' => now(),
+
+        ]);
+    }
+    public function deleteConversationt()
+    {
+       Conversation::find($this->conversation->id)->delete();
+        $this->dispatch('conversationDeleted');
+    }
+    #[On('conversationDeleted')]
+  public function conversationDeleted(){
+
+    return view('livewire.chat.chat-layout');
+  }
 
 };
 ?>
@@ -237,17 +261,20 @@ private function formatMessage($message)
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
                 @endif
 
-                <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" >Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" wire:click="archiveConversationt()" >Archiver cette conversation</flux:menu.item>
+
 
                 <flux:menu.separator />
 
 
-                <flux:menu.item variant="danger" icon="trash">Supprimer</flux:menu.item>
+                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer</flux:menu.item>
             </flux:menu>
         </flux:dropdown>
     </div>
     <flux:separator />
     <!-- Messages Area -->
+
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
         x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
 
@@ -258,6 +285,20 @@ private function formatMessage($message)
         <div class="flex items-start justify-end space-x-2">
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
                 <p class="text-primary-foreground">{{ $msg['body'] }}</p>
+                @if ($msg['type'] == 'media')
+                <a href="{{$msg->getFirstMediaUrl('chat') }}">
+                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                </a>
+                @endif
+
+                {{-- @if($media = $msg->getFirstMedia('chat'))
+                <img src="{{ $media->getUrl() }}"
+                    alt="{{ $media->name }}"
+                    class="w-32 h-32 rounded-lg">
+                <div class="text-xs text-gray-500">
+                    Actual path: {{ $media->getPath() }}
+                </div>
+                @endif --}}
                 <span class="text-xs text-primary-foreground/80 mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}
                 </span>
@@ -269,6 +310,11 @@ private function formatMessage($message)
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
                 <p class="text-foreground">{{ $msg['body'] }}</p>
+                @if ($msg['type'] == 'media')
+                <a href="{{$msg->getFirstMediaUrl('chat') }}">
+                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                </a>
+                @endif
                 <span class="text-xs text-muted-foreground mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}</span>
             </div>
@@ -284,18 +330,19 @@ private function formatMessage($message)
     </div>
 </div>
 @endif
-
     </div>
+
 
     <!-- Message Input -->
     <flux:separator />
     <div class="p-4  bg-card">
         <div class="flex items-center space-x-3">
 
-            <flux:button icon="paperclip" class="p-2"></flux:button>
+            <flux:button icon="paperclip" class="p-2">
+                <input wire:model="files" multiple type="file" class=""/>
+            </flux:button>
 
-            <input type="text" placeholder="Type a message..." wire:model="message" wire:keydown.enter="sendMessage"
-                wire:keydown="startTyping" wire:keydown.debounce.3000ms="stopTyping"
+            <input type="text" placeholder="Typer un message..." wire:model="message" wire:keydown.enter="sendMessage()" wire:keydown="startTyping()"  wire:keydown.debounce.2000ms="stopTyping()"
                 class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
             <flux:button icon="send" class="" wire:click="sendMessage"></flux:button>
         </div>

@@ -11,6 +11,9 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
     return $user->conversations()->whereHas('participants', function ($q) use ($conversationId) {
         $q->where('conversation_id', $conversationId);
-    })->exists();});
+    })->exists();
+});
 
-
+    Broadcast::channel('chat', function ($user) {
+        return ['id' => $user->id, 'name' => $user->name];
+    });

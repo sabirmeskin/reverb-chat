@@ -23,4 +23,22 @@
             class="absolute inset-0 size-full stroke-gray-900/20 dark:stroke-neutral-100/20" />
         </div>
     </div>
+    {{-- <script>
+        Echo.join('presence.chat')
+    .here(users => {
+        console.log('Users online:', users);
+    })
+    .joining(user => {
+        console.log(user.name + ' joined');
+    })
+    .leaving(user => {
+        console.log(user.name + ' left');
+    })
+    .listen('.user.logged-in', (e) => {
+        console.log('Login Event:', e.user.name);
+    })
+    .listen('.user.logged-out', (e) => {
+        console.log('Logout Event:', e.user.name);
+    });
+    </script> --}}
 </x-layouts.app>

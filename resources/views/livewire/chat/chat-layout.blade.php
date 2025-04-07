@@ -9,8 +9,6 @@ new class extends Component {
    #[On('conversationSelected')]
    public function conversationSelected($conversationId){
         $this->conversation = auth()->user()->conversations()->find($conversationId);
-        // $this->dispatch('scroll-bottom');
-
     }
 }; ?>
 

@@ -11,6 +11,7 @@ new class extends Component {
     public $users = [];
     public $conversations = [];
     public $conversation ;
+    public $presence ;
 
 
 
@@ -33,14 +34,14 @@ new class extends Component {
 
 
 
-    public function getListeners()
-    {
-        $listeners = [];
-        foreach ($this->conversations as $conversation) {
-            $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
-        }
-        return $listeners;
-    }
+    // public function getListeners()
+    // {
+    //     $listeners = [];
+    //     foreach ($this->conversations as $conversation) {
+    //         $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
+    //     }
+    //     return $listeners;
+    // }
 
     public function mount()
     {
@@ -70,7 +71,27 @@ new class extends Component {
     {
         // dd('refresh');
         $this->loadConversations();
+
     }
+
+    public function userLoggedIn(){
+        $this->presence = 'success';
+    }
+
+    public function userLoggedOut(){
+        $this->presence = 'danger';
+
+    }
+
+    public function getListeners()
+    {
+        
+        return [
+            "echo-presence:chat,joining" => 'userLoggedIn',
+            "echo-presence:chat,leaving" => 'userLoggedOut',
+        ];
+    }
+
 
 };
 
@@ -127,7 +148,8 @@ new class extends Component {
             <flux:navlist.group heading="Contacts" expandable>
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
-                <flux:navlist.item icon="user" iconDot="success"    badge-color="green" >
+                <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
+                    {{$presence}}
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>
@@ -175,3 +197,22 @@ new class extends Component {
 
 
 </div>
+
+{{-- <script type="module">
+    Echo.join('presence.chat')
+.here(users => {
+    console.log('Users online:', users);
+})
+.joining(user => {
+    console.log(user.name + ' joined');
+})
+.leaving(user => {
+    console.log(user.name + ' left');
+})
+.listen('.user.logged-in', (e) => {
+    console.log('Login Event:', e.user.name);
+})
+.listen('.user.logged-out', (e) => {
+    console.log('Logout Event:', e.user.name);
+});
+</script> --}}
