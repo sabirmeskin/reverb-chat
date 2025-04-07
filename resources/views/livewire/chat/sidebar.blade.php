@@ -11,7 +11,8 @@ new class extends Component {
     public $users = [];
     public $conversations = [];
     public $conversation ;
-    public $presence ;
+    public $onlineUsers = [];
+    public $presence = 'neutral';
 
 
 
@@ -77,21 +78,60 @@ new class extends Component {
 
     }
 
-    public function userLoggedIn(){
-        $this->presence = 'success';
+        public function presenceHere($users)
+    {
+        $this->onlineUsers = $users;
     }
 
-    public function userLoggedOut(){
-        $this->presence = 'danger';
+    public function userJoining($user)
+    {
+        $this->onlineUsers[] = $user;
+        // User::where('id', $user['id'])->update([
+        //     'is_online' => true,
+        //     'last_seen_at' => now(),
+        // ]);
+        $this->loadConversations();
 
+        // dd($user['name'] . ' joined');
+    }
+
+    public function userLeaving($user)
+    {
+        $this->onlineUsers = collect($this->onlineUsers)
+            ->reject(fn ($u) => $u['id'] === $user['id'])
+            ->values()
+            ->toArray();
+        //  dd($this->onlineUsers);
+        // User::where('id', $user['id'])->update([
+        //     'is_online' => false,
+        //     'last_seen_at' => now(),
+        // ]);
+        $this->loadConversations();
+
+        // logger($user['name'] . ' left');
+    }
+
+    public function userLoggedIn($event)
+    {
+        $this->presence = 'success';
+         dd($event['user']);
+        // logger('User logged in event:', $event);
+    }
+
+    public function userLoggedOut($event)
+    {
+        $this->presence = 'danger';
+         dd('$event');
     }
 
     public function getListeners()
     {
-        
         return [
-            "echo-presence:chat,joining" => 'userLoggedIn',
-            "echo-presence:chat,leaving" => 'userLoggedOut',
+            "echo-presence:chat:here" => 'presenceHere',
+            "echo-presence:chat:joining" => 'userJoining',
+            "echo-presence:chat:leaving" => 'userLeaving',
+            "echo-presence:chat,UserLoggedIn" => 'userLoggedIn',
+            "echo-presence:chat,UserLoggedOut" => 'userLoggedOut',
         ];
     }
 
@@ -152,7 +192,9 @@ new class extends Component {
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
                 <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
-                    {{$presence}}
+
+                {{$convo->participants->except(auth()->user()->id)->first()->is_online ? 'Online' : 'Offline'}}
+
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>

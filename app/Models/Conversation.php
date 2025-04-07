@@ -34,7 +34,7 @@ class Conversation extends Model
     }
 
     public function isParticipant(User $user){
-        return $this->participants->contains($user);
+        return $user;
     }
 
     public function activeParticipants()
