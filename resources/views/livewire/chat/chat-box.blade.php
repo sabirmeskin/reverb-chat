@@ -67,6 +67,7 @@ public function sendMessage()
         $this->message = '';
 
         $this->chatMessage($newMessage);
+        $this->dispatch('messageSent');
         $this->stopTyping();
         broadcast(new MessageSendEvent($newMessage))->toOthers();
     } catch (\Exception $e) {

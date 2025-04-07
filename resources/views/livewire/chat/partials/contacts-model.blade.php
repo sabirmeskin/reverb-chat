@@ -26,7 +26,7 @@ new class extends Component {
         $authUser = auth()->user();
 
         // Check if a conversation already exists
-        $conversation = $authUser->conversations()->whereHas('participants', function ($query) use ($userId) {
+        $conversation = $authUser->conversations()->where('type','private')->whereHas('participants', function ($query) use ($userId) {
             $query->where('user_id', $userId);
         })->first();
 
