@@ -43,7 +43,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
         $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
         $user = Auth::user();
-        broadcast(new UserLoggedIn($user));
+        broadcast(new UserLoggedIn($user))->toOthers();
     }
 
     /**

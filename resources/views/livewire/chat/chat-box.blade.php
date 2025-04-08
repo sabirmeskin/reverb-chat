@@ -29,16 +29,23 @@ new class extends Component {
 {
     $conversation = Conversation::find($conversationId);
     $receiver = $conversation->participants()
-        ->where('user_id', '!=', auth()->id())
-        ->first();
-        $this->sender_id = auth()->id();
-        $this->receiver_id = $receiver->id;
-        $this->conversation = $conversation;
-
+    ->where('user_id', '!=', auth()->id())
+    ->first();
+    $this->sender_id = auth()->id();
+    $this->receiver_id = $receiver->id;
+    $this->conversation = $conversation;
+    
     if ($this->conversation) {
         $this->messages = $this->conversation->messages()
-            ->orderBy('created_at', 'asc')
-            ->get();
+        ->orderBy('created_at', 'asc')
+        ->get();
+    }
+
+    // dump($conversation->lastMessage->status);
+    // dump($this->conversation->lastMessage->receiver_id);
+    if (auth()->id() == $this->conversation->lastMessage->receiver_id && $this->conversation->lastMessage->status == 'sent') {
+        $this->listenForMessageRead($conversation->lastMessage, $conversation->participants()->where('user_id', '!=', auth()->id())->first());
+
     }
     $this->checkTypingStatus();
 
@@ -64,6 +71,7 @@ public function sendMessage()
             "receiver_id"     => $this->receiver_id,
             "body"            => trim($this->message),
             "type"            => "text",
+            "delivered_at"            => now(),
         ]);
         if (!empty($this->files)) {
             $newMessage->update([
@@ -126,11 +134,6 @@ public function startTyping()
             $this->sender_id,
             false
         ))->toOthers();
-
-        // Clear timeout
-        if ($this->typingTimeout) {
-            $this->typingTimeout = null;
-        }
     }
 
     public function checkTypingStatus()
@@ -145,7 +148,16 @@ public function startTyping()
             ? User::find($this->receiver_id)->name . ' écrit...'
             : null;
     }
-
+public function listenForMessageRead($event)
+{
+    dump($event);
+    $message = Message::whereid($event['id'])
+        ->with('sender:id,name', 'receiver:id,name')->first();
+    $message->update([
+        'status' => 'read',
+    ]);
+    $this->chatMessage($message);
+}
 private function formatMessage($message)
 {
     return [
@@ -168,6 +180,7 @@ private function formatMessage($message)
         return [
             "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
+            "echo-private:conversation.{$this->conversation->id},MessageReadEvent" => 'listenForMessageRead',
         ];
     }
 

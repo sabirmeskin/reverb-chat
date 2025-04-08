@@ -5,6 +5,8 @@ use App\Models\User;
 use App\Models\Message;
 use Livewire\Attributes\On;
 use App\Models\Conversation;
+use App\Events\UserLoggedIn;
+use App\Events\UserLoggedOut;
 
 new class extends Component {
 
@@ -113,18 +115,26 @@ new class extends Component {
 
     public function userLoggedIn($event)
     {
+
         $this->presence = 'success';
+
          dd($event['user']);
         // logger('User logged in event:', $event);
     }
-    public function logout(){
+    public function logout()
+{
+    // auth()->user()->update([
+    //     'is_online' => false,
+    //     'last_seen_at' => now()
+    // ]);
 
-        broadcast(new UserLoggedIn(auth()->user()));
-    }
+    broadcast(new UserLoggedOut(auth()->user()));
+
+}
     public function userLoggedOut($event)
     {
         $this->presence = 'danger';
-         dd('$event');
+         dd($event);http://127.0.0.1:8000/logout
     }
 
     public function getListeners()
@@ -231,13 +241,18 @@ new class extends Component {
                 </flux:button>
 
 
-                <flux:button variant="danger" icon="log-out" href="{{ route('logout') }}"
-                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
-                    wire:clik="logout"
-                    >
-
+                    <flux:button 
+                    variant="danger" 
+                    icon="log-out" 
+                    href="{{ route('logout') }}"
+                    wire:click="logout"
+                    onclick="event.preventDefault(); 
+                            setTimeout(function() { 
+                                document.getElementById('logout-form').submit(); 
+                            }, 300);"
+                >
                 </flux:button>
-
+                
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                     @csrf
                 </form>

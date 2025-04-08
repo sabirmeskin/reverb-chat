@@ -2,17 +2,17 @@
 
 namespace App\Events;
 
+use App\Models\Message;
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class UserLoggedIn implements ShouldBroadcastNow
+class MessageReadEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -20,17 +20,21 @@ class UserLoggedIn implements ShouldBroadcastNow
      * Create a new event instance.
      */
     public $user;
-
-    public function __construct(User $user)
+    public $message;
+    public function __construct(Message $message, User $user)
     {
         $this->user = $user;
-        $this->user->is_online = true;
-        $this->user->last_seen_at = null;
-        $this->user->save();
+        $this->message = $message;
     }
 
-    public function broadcastOn(): Channel
+
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
+    public function broadcastOn()
     {
-        return new PresenceChannel('chat');
+        return new PrivateChannel('conversation.' . $this->message->conversation_id);
     }
 }
