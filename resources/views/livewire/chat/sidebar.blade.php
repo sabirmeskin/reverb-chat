@@ -128,13 +128,13 @@ new class extends Component {
     //     'last_seen_at' => now()
     // ]);
 
-    broadcast(new UserLoggedOut(auth()->user()));
+    broadcast(new UserLoggedOut(auth()->user()))->toOthers();
 
 }
     public function userLoggedOut($event)
     {
         $this->presence = 'danger';
-         dd($event);http://127.0.0.1:8000/logout
+         dd($event);
     }
 
     public function getListeners()

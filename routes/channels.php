@@ -14,6 +14,11 @@ Broadcast::channel('conversation.{conversationId}', function ($user, $conversati
     })->exists();
 });
 
-    Broadcast::channel('chat', function ($user) {
-        return ['id' => $user->id, 'name' => $user->name];
-    });
+Broadcast::channel('chat', function ($user) {
+    return ['id' => $user->id, 'name' => $user->name];
+});
+
+Broadcast::channel('user-presence.{conversationId}', function (User $user, $conversationId) {
+    return $user;
+});
+

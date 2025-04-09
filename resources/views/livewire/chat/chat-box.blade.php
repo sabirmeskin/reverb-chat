@@ -14,7 +14,6 @@ use App\Models\Conversation;
 new class extends Component {
     use WithFileUploads;
 
-    public $user;
     public $messages = [];
     public $message = '';
     public $conversation;
@@ -24,6 +23,8 @@ new class extends Component {
     public $typingTimeout = null;
     public $istyping = false;
     public $files = [];
+    public $activeUsers = [];    
+    
 
     public function mount($conversationId)
 {
@@ -150,7 +151,6 @@ public function startTyping()
     }
 public function listenForMessageRead($event)
 {
-    dump($event);
     $message = Message::whereid($event['id'])
         ->with('sender:id,name', 'receiver:id,name')->first();
     $message->update([
@@ -177,10 +177,15 @@ private function formatMessage($message)
 
     public function getListeners()
     {
+
         return [
             "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
             "echo-private:conversation.{$this->conversation->id},MessageReadEvent" => 'listenForMessageRead',
+
+            "echo-presence:user-presence.{$this->conversation->id},here" => 'presenceHere',
+            "echo-presence:user-presence.{$this->conversation->id},joining" => 'userJoining',
+            "echo-presence:user-presence.{$this->conversation->id},leaving" => 'userLeaving',
         ];
     }
 
@@ -205,6 +210,30 @@ private function formatMessage($message)
     }
 
 
+    public function presenceHere($user)
+    {
+        $this->activeUsers[] = $user;
+        // dump(['here'=>$this->activeUsers]);
+    }
+
+    public function userJoining($event)
+    {
+        $userId = collect($event)['id'];
+        // dd($userId);
+        $user = User::find($userId);
+        $user->is_activce_in_conversation = true;
+        $user->save();
+        // dump(['joining'=> $user]);
+    }
+
+    public function userLeaving($event)
+    {
+        $userId = collect($event)['id'];
+        $user = User::find($userId);
+        $user->is_activce_in_conversation = false;
+        $user->save();
+        // dump(['leaving'=> $user]);
+    }
 
     public function listenForMessage($event){
         $chatMessage = Message::whereid($event['id'])
@@ -255,7 +284,7 @@ private function formatMessage($message)
             <div>
                 <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=',
                     auth()->id())->first()->name }}</h2>
-                <p class="text-sm text-green">Online</p>
+                <p class="text-sm text-green">Online {{$conversation->participants()->where('user_id','!=',auth()->id())->first()->is_activce_in_conversation == true ? "is active" : "not active"}} </p>
             </div>
             @endif
         </div>
@@ -304,14 +333,6 @@ private function formatMessage($message)
                 </a>
                 @endif
 
-                {{-- @if($media = $msg->getFirstMedia('chat'))
-                <img src="{{ $media->getUrl() }}" 
-                    alt="{{ $media->name }}"
-                    class="w-32 h-32 rounded-lg">
-                <div class="text-xs text-gray-500">
-                    Actual path: {{ $media->getPath() }}
-                </div>
-                @endif --}}
                 <span class="text-xs text-primary-foreground/80 mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}
                 </span>
