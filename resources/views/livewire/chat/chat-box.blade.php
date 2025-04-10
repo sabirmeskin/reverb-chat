@@ -38,6 +38,8 @@ new class extends Component {
         if ($this->conversation) {
             $this->messages = $this->conversation->messages()
                 ->orderBy('created_at', 'asc')
+                ->with('sender:id,name', 'receiver:id,name')
+                ->limit(50)
                 ->get();
         }
         $this->checkTypingStatus();
@@ -279,7 +281,9 @@ new class extends Component {
     <!-- Messages Area -->
 
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)" id="messages-container">
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)" id="messages-container"
+        x-on:scroll-to-bottom.window="setTimeout(() => $el.scrollTop = $el.scrollHeight, 0)"
+        >
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->

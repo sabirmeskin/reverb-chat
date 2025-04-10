@@ -133,7 +133,7 @@ new class extends Component {
                     </div>
                 </flux:navlist.item>
                 @endif
-                @dd($convo->lastMessage->created_at)
+                {{-- @dd($convo->lastMessage->created_at) --}}
 
                 @endforeach
 
