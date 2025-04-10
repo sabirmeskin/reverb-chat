@@ -218,14 +218,16 @@ new class extends Component {
     public function deleteConversationt()
     {
         Conversation::find($this->conversation->id)->delete();
-        $this->dispatch('conversationDeleted');
+        // $this->dispatch('conversationDeleted');
+        return redirect()->route('chat');
+
     }
 
-    #[On('conversationDeleted')]
-    public function conversationDeleted()
-    {
-        return view('livewire.chat.chat-layout');
-    }
+    // #[On('conversationDeleted')]
+    // public function conversationDeleted()
+    // {
+    //     return redirect()->route('chat');
+    // }
 };
 ?>
 
