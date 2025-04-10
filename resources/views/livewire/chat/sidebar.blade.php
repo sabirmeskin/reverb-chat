@@ -5,16 +5,13 @@ use App\Models\User;
 use App\Models\Message;
 use Livewire\Attributes\On;
 use App\Models\Conversation;
-use App\Events\UserLoggedIn;
-use App\Events\UserLoggedOut;
 
 new class extends Component {
 
     public $users = [];
     public $conversations = [];
     public $conversation ;
-    public $onlineUsers = [];
-    public $presence = 'neutral';
+    public $presence ;
 
 
 
@@ -67,72 +64,25 @@ new class extends Component {
 
     }
 
-        public function presenceHere($users)
-    {
-        $this->onlineUsers = $users;
-    }
-
-    public function userJoining($user)
-    {
-        $this->onlineUsers[] = $user;
-        // User::where('id', $user['id'])->update([
-        //     'is_online' => true,
-        //     'last_seen_at' => now(),
-        // ]);
-        $this->loadConversations();
-
-        // dd($user['name'] . ' joined');
-    }
-
-    public function userLeaving($user)
-    {
-        $this->onlineUsers = collect($this->onlineUsers)
-            ->reject(fn ($u) => $u['id'] === $user['id'])
-            ->values()
-            ->toArray();
-        //  dd($this->onlineUsers);
-        // User::where('id', $user['id'])->update([
-        //     'is_online' => false,
-        //     'last_seen_at' => now(),
-        // ]);
-        $this->loadConversations();
-
-        // logger($user['name'] . ' left');
-    }
-
-    public function userLoggedIn($event)
-    {
-
+    public function userLoggedIn(){
         $this->presence = 'success';
-
-         dd($event['user']);
-        // logger('User logged in event:', $event);
     }
-    public function logout()
-{
-    // auth()->user()->update([
-    //     'is_online' => false,
-    //     'last_seen_at' => now()
-    // ]);
 
-    broadcast(new UserLoggedOut(auth()->user()))->toOthers();
-
-}
-    public function userLoggedOut($event)
-    {
+    public function userLoggedOut(){
         $this->presence = 'danger';
-         dd($event);
+
     }
 
     public function getListeners()
     {
-        return [
-            "echo-presence:chat:here" => 'presenceHere',
-            "echo-presence:chat:joining" => 'userJoining',
-            "echo-presence:chat:leaving" => 'userLeaving',
-            "echo-presence:chat,UserLoggedIn" => 'userLoggedIn',
-            "echo-presence:chat,UserLoggedOut" => 'userLoggedOut',
-        ];
+        $listeners = [];
+        foreach ($this->conversations as $conversation) {
+            $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
+            $listeners["echo-presence:chat,joining"] = 'userLoggedIn';
+            $listeners["echo-presence:chat,leaving"] = 'userLoggedOut';
+        }
+        return $listeners;
+
     }
 
 
@@ -191,9 +141,7 @@ new class extends Component {
             <flux:navlist.group heading="Contacts" expandable>
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
-                <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
-
-                {{$convo->participants->except(auth()->user()->id)->first()->is_online ? 'Online' : 'Offline'}}
+                <flux:navlist.item icon="user" iconDot="{{$presence}}"  badge-color="green" >
 
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
@@ -228,16 +176,9 @@ new class extends Component {
                 </flux:button>
 
 
-                    <flux:button
-                    variant="danger"
-                    icon="log-out"
-                    href="{{ route('logout') }}"
-                    wire:click="logout"
-                    onclick="event.preventDefault();
-                            setTimeout(function() {
-                                document.getElementById('logout-form').submit();
-                            }, 300);"
-                >
+                <flux:button variant="danger" icon="log-out" href="{{ route('logout') }}"
+                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+
                 </flux:button>
 
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">

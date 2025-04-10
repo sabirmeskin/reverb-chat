@@ -24,9 +24,6 @@ class UserLoggedOut implements ShouldBroadcastNow
     public function __construct(User $user)
     {
         $this->user = $user;
-        $this->user->is_online = false;
-        $this->user->last_seen_at = now();
-        $this->user->save();
     }
 
     public function broadcastOn(): Channel

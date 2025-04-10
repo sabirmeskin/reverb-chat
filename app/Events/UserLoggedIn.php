@@ -24,9 +24,6 @@ class UserLoggedIn implements ShouldBroadcastNow
     public function __construct(User $user)
     {
         $this->user = $user;
-        $this->user->is_online = true;
-        $this->user->last_seen_at = null;
-        $this->user->save();
     }
 
     public function broadcastOn(): Channel
