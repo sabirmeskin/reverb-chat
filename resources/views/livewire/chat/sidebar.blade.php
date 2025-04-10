@@ -33,16 +33,6 @@ new class extends Component {
 }
 
 
-
-    // public function getListeners()
-    // {
-    //     $listeners = [];
-    //     foreach ($this->conversations as $conversation) {
-    //         $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
-    //     }
-    //     return $listeners;
-    // }
-
     public function mount()
     {
         $this->loadConversations();
@@ -200,22 +190,3 @@ new class extends Component {
 
 
 </div>
-
-{{-- <script type="module">
-    Echo.join('presence.chat')
-.here(users => {
-    console.log('Users online:', users);
-})
-.joining(user => {
-    console.log(user.name + ' joined');
-})
-.leaving(user => {
-    console.log(user.name + ' left');
-})
-.listen('.user.logged-in', (e) => {
-    console.log('Login Event:', e.user.name);
-})
-.listen('.user.logged-out', (e) => {
-    console.log('Logout Event:', e.user.name);
-});
-</script> --}}
