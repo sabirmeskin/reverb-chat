@@ -64,12 +64,21 @@ new class extends Component {
 
     }
 
-    public function userLoggedIn(){
+    public function userLoggedIn($e){
         $this->presence = 'success';
+
+        $user = User::find($e['user']['id']);
+        $user->update([
+            'is_online' => true,
+        ]);
     }
 
     public function userLoggedOut(){
         $this->presence = 'danger';
+        $user = User::find($e['user']['id']);
+        $user->update([
+            'is_online' => false,
+        ]);
 
     }
 
@@ -122,6 +131,11 @@ new class extends Component {
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->name}}</h3>
+                            @if ($convo->lastMessage && $convo->lastMessage->type === 'media')
+                                <p class="text-xs text-muted-foreground truncate font-thin">
+                                    {{ $convo->lastMessage->getFirstMedia('chat')?->mime_type ?? 'Media message' }}
+                                </p>
+                            @endif
                             <p class="text-xs text-muted-foreground truncate font-thin">
                                 {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>
@@ -141,11 +155,17 @@ new class extends Component {
             <flux:navlist.group heading="Contacts" expandable>
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
-                <flux:navlist.item icon="user" iconDot="{{$presence}}"  badge-color="green" >
-
+                <flux:navlist.item icon="user" iconDot="{{$presence }}"  badge-color="green" >
+                        {{ $presence }}
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>
+                            @if ($convo->lastMessage && $convo->lastMessage->type === 'media')
+                                <p class="text-xs text-muted-foreground truncate font-thin">
+                                    {{ $convo->lastMessage->getFirstMedia('chat')?->mime_type ?? 'Media message' }}
+                                </p>
+                            @endif
+
                             <p class="text-sm text-muted-foreground truncate font-thin " >
                                 {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>

@@ -26,27 +26,27 @@ new class extends Component {
     public $files = [];
 
     public function mount($conversationId)
-    {
-        $conversation = Conversation::find($conversationId);
-        $receiver = $conversation->participants()
-            ->where('user_id', '!=', auth()->id())
-            ->first();
-        $this->sender_id = auth()->id();
-        $this->receiver_id = $receiver->id;
-        $this->conversation = $conversation;
+{
+    $conversation = Conversation::find($conversationId);
+    $receiver = $conversation->participants()
+        ->where('user_id', '!=', auth()->id())
+        ->first();
+    $this->sender_id = auth()->id();
+    $this->receiver_id = $receiver->id;
+    $this->conversation = $conversation;
 
-        if ($this->conversation) {
-            $this->messages = $this->conversation->messages()
-                ->orderBy('created_at', 'asc')
-                ->with('sender:id,name', 'receiver:id,name')
-                ->limit(50)
-                ->get();
-        }
-        $this->checkTypingStatus();
-
-        // Scroll to bottom on mount
-        $this->dispatch('scroll-to-bottom');
+    if ($this->conversation) {
+        $this->messages = $this->conversation->messages()
+            ->orderBy('created_at', 'asc')
+            ->with('sender:id,name', 'receiver:id,name', 'media') // Eager load media
+            ->limit(50)
+            ->get();
     }
+    // $this->checkTypingStatus();
+    // dd($this->messages->last());
+    // Scroll to bottom on mount
+    $this->dispatch('scroll-to-bottom');
+}
 
     public function sendMessage()
     {
@@ -86,7 +86,7 @@ new class extends Component {
             $this->chatMessage($newMessage);
 
             // Broadcast the message
-            broadcast(new MessageSendEvent($newMessage))->toOthers();
+            broadcast(new MessageSendEvent($newMessage->load('media')))->toOthers();
             // Optionally, you can also broadcast the typing event
 
             // Stop typing after sending the message
@@ -192,15 +192,15 @@ new class extends Component {
 
     public function listenForMessage($event)
     {
-        $chatMessage = Message::where('id', $event['id'])
-            ->with('sender:id,name', 'receiver:id,name')
-            ->first();
+        $chatMessage = Message::with('sender:id,name', 'receiver:id,name', 'media')
+        ->where('id', $event['id'])
+        ->first();
 
-        if ($chatMessage) {
-            $this->messages[] = $chatMessage;
-            // Scroll to bottom after receiving a message
-            $this->dispatch('scroll-to-bottom');
-        }
+    if ($chatMessage) {
+        $this->messages[] = $chatMessage;
+        // Scroll to bottom after receiving a message
+        $this->dispatch('scroll-to-bottom');
+    }
     }
 
     public function archiveConversationt()
@@ -292,11 +292,15 @@ new class extends Component {
         <div class="flex items-start justify-end space-x-2" wire:key="message-{{ $msg['id'] }}">
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
                 <p class="text-primary-foreground break-words">{{ $msg['body'] }}</p>
-                @if ($msg['type'] == 'media')
-                <a href="{{$msg->getFirstMediaUrl('chat') }}">
-                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
-                </a>
-                @endif
+                @if ($msg->type == 'media')
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    @foreach ($msg->getMedia('chat') as $media)
+                        <a href="{{ $media->getUrl('preview') }}">
+                            <img src="{{ $media->getUrl('preview') }}" alt="Media" class="w-32  h-32 rounded-lg">
+                        </a>
+                    @endforeach
+                </div>
+            @endif
 
                 {{-- @if($media = $msg->getFirstMedia('chat'))
                 <img src="{{ $media->getUrl() }}" alt="{{ $media->name }}" class="w-32 h-32 rounded-lg">
@@ -314,12 +318,16 @@ new class extends Component {
         <div class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
-                <p class="text-foreground break-words">{{ $msg['body'] }}</p>
-                @if ($msg['type'] == 'media')
-                <a href="{{$msg->getFirstMediaUrl('chat') }}">
-                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
-                </a>
-                @endif
+                <p class="text-foreground break-words ">{{ $msg['body'] }}</p>
+                @if ($msg->type == 'media')
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach ($msg->getMedia('chat') as $media)
+                        <a href="{{ $media->getUrl() }}">
+                            <img src="{{ $media->getUrl() }}" alt="Media" class="w-32 h-32 rounded-lg">
+                        </a>
+                    @endforeach
+                </div>
+            @endif
                 <span class="text-xs text-muted-foreground mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}</span>
             </div>
@@ -343,17 +351,30 @@ new class extends Component {
     <div class="p-4  bg-card">
         <div>
             <form wire:submit.prevent="sendMessage" class="flex items-center space-x-3">
-                <flux:button icon="paperclip" class="p-2">
-                    <input wire:model="files" multiple type="file" class="hidden" />
-                </flux:button>
+                <label for="file-upload" class="cursor-pointer">
+                    <flux:button icon="paperclip" class="p-2" x-on:click="$refs.fileUpload.click()"></flux:button>
+                </label>
+                <input id="file-upload" wire:model="files" multiple type="file" class="hidden" x-ref="fileUpload" />
+                {{-- <flux:input icon="trailing"
+                type="file" wire:model="files" label="" multiple icon="paperclip" /> --}}
 
                 <input type="text" placeholder="Écrire un message..." wire:model.defer="message"
-                    wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping"
+                    {{-- wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping" --}}
                     class="flex-1 p-2 rounded-lg bg-muted text-foreground border focus:outline-none focus:ring-2">
 
                 <flux:button icon="send" type="submit"></flux:button>
             </form>
         </div>
+        @if ($files)
+            <div class="mt-2">
+
+                <ul class="list-disc list-inside">
+                    @foreach ($files as $file)
+                        <li class="text-xs text-muted text-gray-600">{{ $file->getClientOriginalName() }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
     </div>
     <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">
 

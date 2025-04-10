@@ -16,7 +16,7 @@ class Message extends Model implements HasMedia
     {
         $this
             ->addMediaConversion('preview')
-            ->fit(Fit::Contain, 300, 300)
+            ->fit(Fit::Contain, 200, 200)
             ->nonQueued();
     }
     protected $guarded = [];
