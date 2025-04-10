@@ -26,76 +26,81 @@ new class extends Component {
     public $files = [];
 
     public function mount($conversationId)
-{
-    $conversation = Conversation::find($conversationId);
-    $receiver = $conversation->participants()
-        ->where('user_id', '!=', auth()->id())
-        ->first();
+    {
+        $conversation = Conversation::find($conversationId);
+        $receiver = $conversation->participants()
+            ->where('user_id', '!=', auth()->id())
+            ->first();
         $this->sender_id = auth()->id();
         $this->receiver_id = $receiver->id;
         $this->conversation = $conversation;
 
-    if ($this->conversation) {
-        $this->messages = $this->conversation->messages()
-            ->orderBy('created_at', 'asc')
-            ->get();
-    }
-    $this->checkTypingStatus();
+        if ($this->conversation) {
+            $this->messages = $this->conversation->messages()
+                ->orderBy('created_at', 'asc')
+                ->get();
+        }
+        $this->checkTypingStatus();
 
-}
-
-public function sendMessage()
-{
-    if (!auth()->check()) {
-        session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
-        return;
+        // Scroll to bottom on mount
+        $this->dispatch('scroll-to-bottom');
     }
 
-    if (empty(trim($this->message)) && empty($this->files)) {
-        session()->flash('error', 'Le message ne peut pas être vide.');
-        return;
-    }
-
-    try {
-        // Create a new message in the database
-        $newMessage = Message::create([
-            "conversation_id" => $this->conversation->id,
-            "sender_id"       => $this->sender_id ?? auth()->id(),
-            "receiver_id"     => $this->receiver_id,
-            "body"            => trim($this->message),
-            "type"            => "text",
-        ]);
-
-        // Handle media files if they exist
-        if (!empty($this->files)) {
-            $newMessage->update(['type' => 'media']);
-            foreach ($this->files as $file) {
-                $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
-            }
+    public function sendMessage()
+    {
+        if (!auth()->check()) {
+            session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
+            return;
         }
 
-        // Reset input fields
-        $this->files = [];
-        $this->message = '';
+        if (empty(trim($this->message)) && empty($this->files)) {
+            session()->flash('error', 'Le message ne peut pas être vide.');
+            return;
+        }
 
-        // Add the message to the chat
-        $this->chatMessage($newMessage);
+        try {
+            // Create a new message in the database
+            $newMessage = Message::create([
+                "conversation_id" => $this->conversation->id,
+                "sender_id"         => $this->sender_id ?? auth()->id(),
+                "receiver_id"       => $this->receiver_id,
+                "body"              => trim($this->message),
+                "type"              => "text",
+            ]);
 
-        // Broadcast the message
-        broadcast(new MessageSendEvent($newMessage))->toOthers();
-        // Optionally, you can also broadcast the typing event
+            // Handle media files if they exist
+            if (!empty($this->files)) {
+                $newMessage->update(['type' => 'media']);
+                foreach ($this->files as $file) {
+                    $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
+                }
+            }
 
-        // Stop typing after sending the message
-        $this->stopTyping();
-    } catch (\Exception $e) {
-        session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
-        // Log the error for debugging
-        dd($e->getMessage());
+            // Reset input fields
+            $this->files = [];
+            $this->message = '';
+
+            // Add the message to the chat
+            $this->chatMessage($newMessage);
+
+            // Broadcast the message
+            broadcast(new MessageSendEvent($newMessage))->toOthers();
+            // Optionally, you can also broadcast the typing event
+
+            // Stop typing after sending the message
+            $this->stopTyping();
+
+            // Scroll to bottom after sending
+            $this->dispatch('scroll-to-bottom');
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
+            // Log the error for debugging
+            dd($e->getMessage());
+        }
     }
-}
 
-
-public function startTyping()
+    public function startTyping()
     {
         // Update typing_at timestamp
         TypingIndicator::updateOrCreate(
@@ -119,8 +124,6 @@ public function startTyping()
         if ($this->typingTimeout) {
             $this->typingTimeout = null;
         }
-
-
     }
 
     public function stopTyping()
@@ -156,10 +159,8 @@ public function startTyping()
             : null;
     }
 
-
-
-    public function chatMessage($message){
-
+    public function chatMessage($message)
+    {
         $this->messages[] = $message;
     }
 
@@ -179,10 +180,6 @@ public function startTyping()
                 // User started typing - show indicator for 3 seconds
                 $this->typingIndicator = User::find($event['userId'])->name . ' écrit...';
                 $this->dispatch('typingUpdated');
-
-
-
-
             } else {
                 // User stopped typing - hide immediately
                 $this->typingIndicator = null;
@@ -190,8 +187,6 @@ public function startTyping()
             }
         }
     }
-
-
 
     public function listenForMessage($event)
     {
@@ -201,6 +196,8 @@ public function startTyping()
 
         if ($chatMessage) {
             $this->messages[] = $chatMessage;
+            // Scroll to bottom after receiving a message
+            $this->dispatch('scroll-to-bottom');
         }
     }
 
@@ -213,20 +210,20 @@ public function startTyping()
             'user_id' => auth()->id(),
             'conversation_id' => $this->conversation->id,
             'archived_at' => now(),
-
         ]);
     }
+
     public function deleteConversationt()
     {
-       Conversation::find($this->conversation->id)->delete();
+        Conversation::find($this->conversation->id)->delete();
         $this->dispatch('conversationDeleted');
     }
+
     #[On('conversationDeleted')]
-  public function conversationDeleted(){
-
-    return view('livewire.chat.chat-layout');
-  }
-
+    public function conversationDeleted()
+    {
+        return view('livewire.chat.chat-layout');
+    }
 };
 ?>
 
@@ -282,7 +279,7 @@ public function startTyping()
     <!-- Messages Area -->
 
     <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)" id="messages-container">
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
@@ -324,14 +321,14 @@ public function startTyping()
         @endif
         @endforeach
         <!-- Typing Indicator -->
-        @if ($typingIndicator)
+        {{-- @if ($typingIndicator)
         <div class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
                 <p class="text-foreground italic">{{ $typingIndicator }}</p>
             </div>
         </div>
-        @endif
+        @endif --}}
     </div>
 
 
@@ -353,4 +350,5 @@ public function startTyping()
         </div>
     </div>
     <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">
+
 </div>

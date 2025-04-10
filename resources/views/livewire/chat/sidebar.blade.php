@@ -140,10 +140,10 @@ new class extends Component {
                             {{ optional($convo->lastMessage)->created_at ?
                             $convo->lastMessage->created_at->diffForHumans() : '' }}
                         </span>
-
                     </div>
                 </flux:navlist.item>
                 @endif
+                @dd($convo->lastMessage->created_at)
 
                 @endforeach
 
