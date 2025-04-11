@@ -55,11 +55,13 @@ new class extends Component {
             $this->loadConversations();
         }
 
-
+    public function conversations(){
+        $this->loadConversations();
+    }
       #[On('conversationUpdated')]
       public function refreshList()
     {
-        // dd('refresh');
+
         $this->loadConversations();
 
     }
@@ -86,7 +88,7 @@ new class extends Component {
     {
         $listeners = [];
         foreach ($this->conversations as $conversation) {
-            $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
+            $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'conversations';
             $listeners["echo-presence:chat,joining"] = 'userLoggedIn';
             $listeners["echo-presence:chat,leaving"] = 'userLoggedOut';
         }

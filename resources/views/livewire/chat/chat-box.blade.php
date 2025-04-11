@@ -98,7 +98,7 @@ new class extends Component {
         } catch (\Exception $e) {
             session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
             // Log the error for debugging
-            dd($e->getMessage());
+            // dd($e->getMessage());
         }
     }
 
