@@ -295,9 +295,9 @@ new class extends Component {
                 @if ($msg->type == 'media')
                 <div class="grid grid-cols-2 gap-2 pt-2">
                     @foreach ($msg->getMedia('chat') as $media)
-                        <a href="{{ $media->getUrl('preview') }}">
-                            <img src="{{ $media->getUrl('preview') }}" alt="Media" class="w-32  h-32 rounded-lg">
-                        </a>
+
+                            <livewire:chat.partials.media :media="$media" :key="$media->id" />
+
                     @endforeach
                 </div>
             @endif
@@ -317,14 +317,13 @@ new class extends Component {
         <!-- Received Message -->
         <div class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
-            <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
+            <div class="bg-gray-200 dark:bg-gray-400 rounded-lg p-3 max-w-md">
                 <p class="text-foreground break-words ">{{ $msg['body'] }}</p>
                 @if ($msg->type == 'media')
                 <div class="grid grid-cols-2 gap-2">
                     @foreach ($msg->getMedia('chat') as $media)
-                        <a href="{{ $media->getUrl() }}">
-                            <img src="{{ $media->getUrl() }}" alt="Media" class="w-32 h-32 rounded-lg">
-                        </a>
+                        <livewire:chat.partials.media :media="$media" :key="$media->id" />
+                        {{-- <img src="{{ $media->getUrl('preview') }}" alt="Media" class="w-32  h-32 rounded-lg"> --}}
                     @endforeach
                 </div>
             @endif
