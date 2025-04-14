@@ -14,7 +14,7 @@ new class extends Component {
 }; ?>
 
 <div>
-    @if ($media->mime_type === 'image')
+    @if ($media->mime_type === 'image/jpeg' || $media->mime_type === 'image/png' || $media->mime_type === 'image/gif')
         <a href="{{ $media->getUrl() }}">
             <img src="{{ $media->getUrl() }}" alt="Media" class="w-32 h-32 rounded-lg">
         </a>
@@ -34,7 +34,10 @@ new class extends Component {
         </a>
     @elseif ($media->mime_type === 'text/plain')
         <a href="{{ $media->getUrl() }}" class="text-blue-500 underline" target="_blank">
-            {{ Str::limit($media->name, 30) }}.({{ $media->extension }})
+            <div class="flex items-center space-x-2">
+                <img src="{{ asset('path/to/txt-icon.png') }}" alt="TXT Icon" class="w-6 h-6">
+                <span>{{ Str::limit($media->name, 30) }}.({{ $media->extension }})</span>
+            </div>
         </a>
     @elseif ($media->mime_type === 'text/html')
         <a href="{{ $media->getUrl() }}" class="text-blue-500 underline" target="_blank">

@@ -196,6 +196,8 @@ new class extends Component {
         ->where('id', $event['id'])
         ->first();
 
+
+        $chatMessage->markAsDelivered();
     if ($chatMessage) {
         $this->messages[] = $chatMessage;
         // Scroll to bottom after receiving a message
@@ -215,19 +217,26 @@ new class extends Component {
         ]);
     }
 
+    // public function deleteConversationt()
+    // {
+    //     Conversation::find($this->conversation->id)->delete();
+    //     $this->dispatch('conversationDeleted');
+    //     return redirect()->route('chat');
+
+    // }
+
+    // #[On('conversationDeleted')]
+    // public function conversationDeleted()
+    // {
+    //     return redirect()->route('chat');
+    // }
     public function deleteConversationt()
     {
-        Conversation::find($this->conversation->id)->delete();
+        $this->conversation->delete();
         $this->dispatch('conversationDeleted');
         return redirect()->route('chat');
-
     }
 
-    #[On('conversationDeleted')]
-    public function conversationDeleted()
-    {
-        return redirect()->route('chat');
-    }
 };
 ?>
 
