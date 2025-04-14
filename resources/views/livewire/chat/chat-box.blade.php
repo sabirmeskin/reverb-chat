@@ -14,6 +14,7 @@ use App\Models\Conversation;
 new class extends Component {
     use WithFileUploads;
 
+    public $user;
     public $messages = [];
     public $message = '';
     public $conversation;
@@ -23,78 +24,85 @@ new class extends Component {
     public $typingTimeout = null;
     public $istyping = false;
     public $files = [];
-    public $activeUsers = [];    
-    
 
     public function mount($conversationId)
 {
     $conversation = Conversation::find($conversationId);
     $receiver = $conversation->participants()
-    ->where('user_id', '!=', auth()->id())
-    ->first();
+        ->where('user_id', '!=', auth()->id())
+        ->first();
     $this->sender_id = auth()->id();
     $this->receiver_id = $receiver->id;
     $this->conversation = $conversation;
-    
+
     if ($this->conversation) {
         $this->messages = $this->conversation->messages()
-        ->orderBy('created_at', 'asc')
-        ->get();
+            ->orderBy('created_at', 'asc')
+            ->with('sender:id,name', 'receiver:id,name', 'media') // Eager load media
+            ->limit(50)
+            ->get();
     }
-
-    // dump($conversation->lastMessage->status);
-    // dump($this->conversation->lastMessage->receiver_id);
-    if (auth()->id() == $this->conversation->lastMessage->receiver_id && $this->conversation->lastMessage->status == 'sent') {
-        $this->listenForMessageRead($conversation->lastMessage, $conversation->participants()->where('user_id', '!=', auth()->id())->first());
-
-    }
-    $this->checkTypingStatus();
-
+    // $this->checkTypingStatus();
+    // dd($this->messages->last());
+    // Scroll to bottom on mount
+    $this->dispatch('scroll-to-bottom');
 }
 
-public function sendMessage()
-{
+    public function sendMessage()
+    {
+        if (!auth()->check()) {
+            session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
+            return;
+        }
 
-    if (!auth()->check()) {
-        session()->flash('error', 'Vous devez être connecté pour envoyer un message.');
-        return;
-    }
+        if (empty(trim($this->message)) && empty($this->files)) {
+            session()->flash('error', 'Le message ne peut pas être vide.');
+            return;
+        }
 
-    if (empty(trim($this->message)) && empty($this->files)) {
-        session()->flash('error', 'Le message ne peut pas être vide.');
-        return;
-    }
-
-    try {
-        $newMessage = Message::create([
-            "conversation_id" => $this->conversation->id, 
-            "sender_id"       => $this->sender_id ?? auth()->id(),
-            "receiver_id"     => $this->receiver_id,
-            "body"            => trim($this->message),
-            "type"            => "text",
-            "delivered_at"            => now(),
-        ]);
-        if (!empty($this->files)) {
-            $newMessage->update([
-                'type' => 'media',
+        try {
+            // Create a new message in the database
+            $newMessage = Message::create([
+                "conversation_id" => $this->conversation->id,
+                "sender_id"         => $this->sender_id ?? auth()->id(),
+                "receiver_id"       => $this->receiver_id,
+                "body"              => trim($this->message),
+                "type"              => "text",
             ]);
-            foreach ($this->files as $file) {
-            $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
-        }
-        }
-        
-        $this->files = [];
-        $this->message = '';
 
-        $this->chatMessage($newMessage);
-        broadcast(new MessageSendEvent($newMessage))->toOthers();
-        $this->stopTyping();
-    } catch (\Exception $e) {
-        session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
+            // Handle media files if they exist
+            if (!empty($this->files)) {
+                $newMessage->update(['type' => 'media']);
+                foreach ($this->files as $file) {
+                    $newMessage->addMedia($file)->withResponsiveImages()->toMediaCollection('chat');
+                }
+            }
+
+            // Reset input fields
+            $this->files = [];
+            $this->message = '';
+
+            // Add the message to the chat
+            $this->chatMessage($newMessage);
+
+            // Broadcast the message
+            broadcast(new MessageSendEvent($newMessage->load('media')))->toOthers();
+            // Optionally, you can also broadcast the typing event
+
+            // Stop typing after sending the message
+            $this->stopTyping();
+
+            // Scroll to bottom after sending
+            $this->dispatch('scroll-to-bottom');
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Une erreur est survenue lors de l\'envoi du message.');
+            // Log the error for debugging
+            // dd($e->getMessage());
+        }
     }
-}
 
-public function startTyping()
+    public function startTyping()
     {
         // Update typing_at timestamp
         TypingIndicator::updateOrCreate(
@@ -118,8 +126,6 @@ public function startTyping()
         if ($this->typingTimeout) {
             $this->typingTimeout = null;
         }
-
-
     }
 
     public function stopTyping()
@@ -135,6 +141,11 @@ public function startTyping()
             $this->sender_id,
             false
         ))->toOthers();
+
+        // Clear timeout
+        if ($this->typingTimeout) {
+            $this->typingTimeout = null;
+        }
     }
 
     public function checkTypingStatus()
@@ -149,43 +160,17 @@ public function startTyping()
             ? User::find($this->receiver_id)->name . ' écrit...'
             : null;
     }
-public function listenForMessageRead($event)
-{
-    $message = Message::whereid($event['id'])
-        ->with('sender:id,name', 'receiver:id,name')->first();
-    $message->update([
-        'status' => 'read',
-    ]);
-    $this->chatMessage($message);
-}
-private function formatMessage($message)
-{
-    return [
-        'id' => $message->id,
-        'body' => $message->body,
-        'type' => $message->type,
-        'sender_id' => $message->sender_id,
-        'receiver_id' => $message->receiver_id,
-        'created_at' => $message->created_at->format('Y-m-d H:i:s'),
-    ];
-}
 
-    public function chatMessage($message){
-
+    public function chatMessage($message)
+    {
         $this->messages[] = $message;
     }
 
     public function getListeners()
     {
-
         return [
-            "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
             "echo-private:conversation.{$this->conversation->id},MessageSendEvent" => 'listenForMessage',
-            "echo-private:conversation.{$this->conversation->id},MessageReadEvent" => 'listenForMessageRead',
-
-            "echo-presence:user-presence.{$this->conversation->id},here" => 'presenceHere',
-            "echo-presence:user-presence.{$this->conversation->id},joining" => 'userJoining',
-            "echo-presence:user-presence.{$this->conversation->id},leaving" => 'userLeaving',
+            // "echo-private:conversation.{$this->conversation->id},TypingEvent" => 'listenForTyping',
         ];
     }
 
@@ -197,10 +182,6 @@ private function formatMessage($message)
                 // User started typing - show indicator for 3 seconds
                 $this->typingIndicator = User::find($event['userId'])->name . ' écrit...';
                 $this->dispatch('typingUpdated');
-
-
-
-
             } else {
                 // User stopped typing - hide immediately
                 $this->typingIndicator = null;
@@ -209,37 +190,19 @@ private function formatMessage($message)
         }
     }
 
-
-    public function presenceHere($user)
+    public function listenForMessage($event)
     {
-        $this->activeUsers[] = $user;
-        // dump(['here'=>$this->activeUsers]);
+        $chatMessage = Message::with('sender:id,name', 'receiver:id,name', 'media')
+        ->where('id', $event['id'])
+        ->first();
+
+
+        $chatMessage->markAsDelivered();
+    if ($chatMessage) {
+        $this->messages[] = $chatMessage;
+        // Scroll to bottom after receiving a message
+        $this->dispatch('scroll-to-bottom');
     }
-
-    public function userJoining($event)
-    {
-        $userId = collect($event)['id'];
-        // dd($userId);
-        $user = User::find($userId);
-        $user->is_activce_in_conversation = true;
-        $user->save();
-        // dump(['joining'=> $user]);
-    }
-
-    public function userLeaving($event)
-    {
-        $userId = collect($event)['id'];
-        $user = User::find($userId);
-        $user->is_activce_in_conversation = false;
-        $user->save();
-        // dump(['leaving'=> $user]);
-    }
-
-    public function listenForMessage($event){
-        $chatMessage = Message::whereid($event['id'])
-        ->with('sender:id,name', 'receiver:id,name')->first();
-        $this->chatMessage($chatMessage);
-
     }
 
     public function archiveConversationt()
@@ -251,19 +214,28 @@ private function formatMessage($message)
             'user_id' => auth()->id(),
             'conversation_id' => $this->conversation->id,
             'archived_at' => now(),
-
         ]);
     }
+
+    // public function deleteConversationt()
+    // {
+    //     Conversation::find($this->conversation->id)->delete();
+    //     $this->dispatch('conversationDeleted');
+    //     return redirect()->route('chat');
+
+    // }
+
+    // #[On('conversationDeleted')]
+    // public function conversationDeleted()
+    // {
+    //     return redirect()->route('chat');
+    // }
     public function deleteConversationt()
     {
-       Conversation::find($this->conversation->id)->delete();
+        $this->conversation->delete();
         $this->dispatch('conversationDeleted');
+        return redirect()->route('chat');
     }
-    #[On('conversationDeleted')]
-  public function conversationDeleted(){
-
-    return view('livewire.chat.chat-layout');
-  }
 
 };
 ?>
@@ -284,7 +256,7 @@ private function formatMessage($message)
             <div>
                 <h2 class="font-semibold text-foreground">{{ $conversation->participants()->where('user_id','!=',
                     auth()->id())->first()->name }}</h2>
-                <p class="text-sm text-green">Online {{$conversation->participants()->where('user_id','!=',auth()->id())->first()->is_activce_in_conversation == true ? "is active" : "not active"}} </p>
+                <p class="text-sm text-green">Online</p>
             </div>
             @endif
         </div>
@@ -303,36 +275,48 @@ private function formatMessage($message)
                 <flux:menu.item icon="user">View Group Members</flux:menu.item>
                 @endif
 
-                <flux:menu.item icon="plus" >Ajouter Membre</flux:menu.item>
-                <flux:menu.item icon="plus" wire:click="archiveConversationt()" >Archiver cette conversation</flux:menu.item>
+                <flux:menu.item icon="plus">Ajouter Membre</flux:menu.item>
+                <flux:menu.item icon="plus" wire:click="archiveConversationt()">Archiver cette conversation
+                </flux:menu.item>
 
 
                 <flux:menu.separator />
 
 
-                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer</flux:menu.item>
+                <flux:menu.item variant="danger" wire:click="deleteConversationt()" icon="trash">Supprimer
+                </flux:menu.item>
             </flux:menu>
         </flux:dropdown>
     </div>
     <flux:separator />
     <!-- Messages Area -->
-    
-    <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
-        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
 
+    <div class="overflow-y-scroll p-4 space-y-4 bg-background h-[calc(100vh-200px)]"
+        x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)" id="messages-container"
+        x-on:scroll-to-bottom.window="setTimeout(() => $el.scrollTop = $el.scrollHeight, 0)"
         >
         @foreach ($messages as $msg)
         @if ($msg['sender_id'] == $sender_id)
         <!-- Sent Message -->
-        <div class="flex items-start justify-end space-x-2">
+        <div class="flex items-start justify-end space-x-2" wire:key="message-{{ $msg['id'] }}">
             <div class="bg-blue-300 rounded-lg p-3 max-w-md">
-                <p class="text-primary-foreground">{{ $msg['body'] }}</p>
-                @if ($msg['type'] == 'media')
-                <a href="{{$msg->getFirstMediaUrl('chat') }}">
-                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
-                </a>
-                @endif
+                <p class="text-primary-foreground break-words">{{ $msg['body'] }}</p>
+                @if ($msg->type == 'media')
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    @foreach ($msg->getMedia('chat') as $media)
 
+                            <livewire:chat.partials.media :media="$media" :key="$media->id" />
+
+                    @endforeach
+                </div>
+            @endif
+
+                {{-- @if($media = $msg->getFirstMedia('chat'))
+                <img src="{{ $media->getUrl() }}" alt="{{ $media->name }}" class="w-32 h-32 rounded-lg">
+                <div class="text-xs text-gray-500">
+                    Actual path: {{ $media->getPath() }}
+                </div>
+                @endif --}}
                 <span class="text-xs text-primary-foreground/80 mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}
                 </span>
@@ -342,6 +326,7 @@ private function formatMessage($message)
         <!-- Received Message -->
         <div class="flex items-start space-x-2">
             <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
+<<<<<<< HEAD
             <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
                 <p class="text-foreground">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
@@ -349,6 +334,18 @@ private function formatMessage($message)
                     <img src="{{$msg->getFirstMediaUrl('chat','preview') }}" alt="Image" class="w-32 h-32 rounded-lg">
                 </a>
                 @endif
+=======
+            <div class="bg-gray-200 dark:bg-gray-400 rounded-lg p-3 max-w-md">
+                <p class="text-foreground break-words ">{{ $msg['body'] }}</p>
+                @if ($msg->type == 'media')
+                <div class="grid grid-cols-2 gap-2">
+                    @foreach ($msg->getMedia('chat') as $media)
+                        <livewire:chat.partials.media :media="$media" :key="$media->id" />
+                        {{-- <img src="{{ $media->getUrl('preview') }}" alt="Media" class="w-32  h-32 rounded-lg"> --}}
+                    @endforeach
+                </div>
+            @endif
+>>>>>>> origin/sabir_03-04
                 <span class="text-xs text-muted-foreground mt-1 block">{{
                     \Carbon\Carbon::parse($msg['created_at'])->format('h:i A') }}</span>
             </div>
@@ -356,30 +353,47 @@ private function formatMessage($message)
         @endif
         @endforeach
         <!-- Typing Indicator -->
-        @if ($typingIndicator)
-<div class="flex items-start space-x-2">
-    <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
-    <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
-        <p class="text-foreground italic">{{ $typingIndicator }}</p>
-    </div>
-</div>
-@endif
+        {{-- @if ($typingIndicator)
+        <div class="flex items-start space-x-2">
+            <img src="" class="w-8 h-8 rounded-full object-cover" alt="Contact">
+            <div class="bg-gray-200 dark:bg-gray-500 rounded-lg p-3 max-w-md">
+                <p class="text-foreground italic">{{ $typingIndicator }}</p>
+            </div>
+        </div>
+        @endif --}}
     </div>
 
 
     <!-- Message Input -->
     <flux:separator />
     <div class="p-4  bg-card">
-        <div class="flex items-center space-x-3">
+        <div>
+            <form wire:submit.prevent="sendMessage" class="flex items-center space-x-3">
+                <label for="file-upload" class="cursor-pointer">
+                    <flux:button icon="paperclip" class="p-2" x-on:click="$refs.fileUpload.click()"></flux:button>
+                </label>
+                <input id="file-upload" wire:model="files" multiple type="file" class="hidden" x-ref="fileUpload" />
+                {{-- <flux:input icon="trailing"
+                type="file" wire:model="files" label="" multiple icon="paperclip" /> --}}
 
-            <flux:button icon="paperclip" class="p-2">
-                <input wire:model="files" multiple type="file" class=""/>
-            </flux:button>
-            
-            <input type="text" placeholder="Typer un message..." wire:model="message" wire:keydown.enter="sendMessage()" wire:keydown="startTyping()"  wire:keydown.debounce.2000ms="stopTyping()"
-                class="flex-1 p-2 rounded-lg bg-muted text-foreground focus:outline-none focus:ring-2 dark:border-gray-700 border-gray-200 border focus:ring-primary">
-            <flux:button icon="send" class="" wire:click="sendMessage"></flux:button>
+                <input type="text" placeholder="Écrire un message..." wire:model.defer="message"
+                    {{-- wire:keydown="startTyping" wire:keydown.debounce.2000ms="stopTyping" --}}
+                    class="flex-1 p-2 rounded-lg bg-muted text-foreground border focus:outline-none focus:ring-2">
+
+                <flux:button icon="send" type="submit"></flux:button>
+            </form>
         </div>
+        @if ($files)
+            <div class="mt-2">
+
+                <ul class="list-disc list-inside">
+                    @foreach ($files as $file)
+                        <li class="text-xs text-muted text-gray-600">{{ $file->getClientOriginalName() }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
     </div>
     <livewire:chat.partials.edit-group-modal :conversation-id="$conversation->id" :key="$conversation->id">
+
 </div>

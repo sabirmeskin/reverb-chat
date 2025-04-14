@@ -5,25 +5,19 @@ use App\Models\User;
 use App\Models\Message;
 use Livewire\Attributes\On;
 use App\Models\Conversation;
-use App\Events\UserLoggedIn;
-use App\Events\UserLoggedOut;
 
 new class extends Component {
 
     public $users = [];
     public $conversations = [];
     public $conversation ;
-    public $onlineUsers = [];
-    public $presence = 'neutral';
+    public $presence ;
 
 
 
     public function loadConversations()
     {
-        // Check if the user is authenticated
-        if (!auth()->check()) {
-            return;
-        }
+
 
         // Load conversations for the authenticated user
     $this->conversations = auth()->user()->conversations()
@@ -38,16 +32,6 @@ new class extends Component {
         ->get();
 }
 
-
-
-    // public function getListeners()
-    // {
-    //     $listeners = [];
-    //     foreach ($this->conversations as $conversation) {
-    //         $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'refreshList';
-    //     }
-    //     return $listeners;
-    // }
 
     public function mount()
     {
@@ -68,84 +52,43 @@ new class extends Component {
     public function handleConversationStarted($conversationId)
         {
             $this->setConversation($conversationId);
+            $this->dispatch('conversationUpdated');
+            $this->conversations = Conversation::where('id', $conversationId)->with(['participants', 'lastMessage'])->get();
             $this->loadConversations();
         }
 
-
+    public function conversations(){
+        $this->loadConversations();
+    }
       #[On('conversationUpdated')]
       public function refreshList()
     {
-        // dd('refresh');
         $this->loadConversations();
-
     }
 
-        public function presenceHere($users)
-    {
-        $this->onlineUsers = $users;
-    }
-
-    public function userJoining($user)
-    {
-        $this->onlineUsers[] = $user;
-        // User::where('id', $user['id'])->update([
-        //     'is_online' => true,
-        //     'last_seen_at' => now(),
-        // ]);
-        $this->loadConversations();
-
-        // dd($user['name'] . ' joined');
-    }
-
-    public function userLeaving($user)
-    {
-        $this->onlineUsers = collect($this->onlineUsers)
-            ->reject(fn ($u) => $u['id'] === $user['id'])
-            ->values()
-            ->toArray();
-        //  dd($this->onlineUsers);
-        // User::where('id', $user['id'])->update([
-        //     'is_online' => false,
-        //     'last_seen_at' => now(),
-        // ]);
-        $this->loadConversations();
-
-        // logger($user['name'] . ' left');
-    }
-
-    public function userLoggedIn($event)
-    {
-
+    public function userLoggedIn($e){
         $this->presence = 'success';
 
-         dd($event['user']);
-        // logger('User logged in event:', $event);
+
     }
-    public function logout()
-{
-    // auth()->user()->update([
-    //     'is_online' => false,
-    //     'last_seen_at' => now()
-    // ]);
 
-    broadcast(new UserLoggedOut(auth()->user()))->toOthers();
+    public function userLoggedOut(){
+        $this->presence = 'dd';
 
-}
-    public function userLoggedOut($event)
-    {
-        $this->presence = 'danger';
-         dd($event);
+
     }
 
     public function getListeners()
     {
-        return [
-            "echo-presence:chat:here" => 'presenceHere',
-            "echo-presence:chat:joining" => 'userJoining',
-            "echo-presence:chat:leaving" => 'userLeaving',
-            "echo-presence:chat,UserLoggedIn" => 'userLoggedIn',
-            "echo-presence:chat,UserLoggedOut" => 'userLoggedOut',
-        ];
+        $listeners = [];
+        foreach ($this->conversations as $conversation) {
+            $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'conversations';
+            $listeners["echo-private:conversation.{$conversation->id},MessageDeliveredEvent"] = 'refreshList';
+            $listeners["echo-presence:chat,joining"] = 'userLoggedIn';
+            $listeners["echo-presence:chat,leaving"] = 'userLoggedOut';
+        }
+        return $listeners;
+
     }
 
 
@@ -185,18 +128,23 @@ new class extends Component {
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->name}}</h3>
+                            @if ($convo->lastMessage && $convo->lastMessage->type === 'media')
+                                <p class="text-xs text-muted-foreground truncate font-thin">
+                                    {{ $convo->lastMessage->getFirstMedia('chat')?->mime_type ?? 'Media message' }}
+                                </p>
+                            @endif
                             <p class="text-xs text-muted-foreground truncate font-thin">
-                                {{ $convo->lastMessage->body ?? 'No messages yet' }}
+                                {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>
                         </div>
                         <span class="text-xs text-muted-foreground">
                             {{ optional($convo->lastMessage)->created_at ?
                             $convo->lastMessage->created_at->diffForHumans() : '' }}
                         </span>
-
                     </div>
                 </flux:navlist.item>
                 @endif
+                {{-- @dd($convo->lastMessage->created_at) --}}
 
                 @endforeach
 
@@ -204,15 +152,18 @@ new class extends Component {
             <flux:navlist.group heading="Contacts" expandable>
                 @foreach ($conversations as $convo)
                 @if (!$convo->isGroup())
-                <flux:navlist.item icon="user" iconDot="success"  badge-color="green" >
-
-                {{$convo->participants->except(auth()->user()->id)->first()->is_online ? 'Online' : 'Offline'}}
-
+                <flux:navlist.item icon="user" iconDot="{{$presence }}"  badge-color="green" >
                     <div class="flex items-center space-x-3 cursor-pointer" wire:click="setConversation({{ $convo->id }})">
                         <div class="flex-1">
                             <h3 class="font-semibold text-foreground">{{$convo->participants()->where('user_id','!=',auth()->id())->first()->name}}</h3>
-                            <p class="text-sm text-muted-foreground truncate font-thin">
-                                {{ $convo->lastMessage->body ?? 'No messages yet' }}
+                            @if ($convo->lastMessage && $convo->lastMessage->type === 'media')
+                                <p class="text-xs text-muted-foreground truncate font-thin">
+                                    {{ $convo->lastMessage->getFirstMedia('chat')?->mime_type ?? 'Media message' }}
+                                </p>
+                            @endif
+
+                            <p class="text-sm text-muted-foreground truncate font-thin " >
+                                {{ Str::limit($convo->lastMessage->body ?? 'No messages yet', 20) }}
                             </p>
                         </div>
                         <span class="text-xs text-muted-foreground font-thin">
@@ -241,18 +192,11 @@ new class extends Component {
                 </flux:button>
 
 
-                    <flux:button 
-                    variant="danger" 
-                    icon="log-out" 
-                    href="{{ route('logout') }}"
-                    wire:click="logout"
-                    onclick="event.preventDefault(); 
-                            setTimeout(function() { 
-                                document.getElementById('logout-form').submit(); 
-                            }, 300);"
-                >
+                <flux:button variant="danger" icon="log-out" href="{{ route('logout') }}"
+                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+
                 </flux:button>
-                
+
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                     @csrf
                 </form>
@@ -262,22 +206,3 @@ new class extends Component {
 
 
 </div>
-
-{{-- <script type="module">
-    Echo.join('presence.chat')
-.here(users => {
-    console.log('Users online:', users);
-})
-.joining(user => {
-    console.log(user.name + ' joined');
-})
-.leaving(user => {
-    console.log(user.name + ' left');
-})
-.listen('.user.logged-in', (e) => {
-    console.log('Login Event:', e.user.name);
-})
-.listen('.user.logged-out', (e) => {
-    console.log('Logout Event:', e.user.name);
-});
-</script> --}}

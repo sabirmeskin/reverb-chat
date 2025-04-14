@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class ChatController extends Controller
 {
     public function dashboard(){
-        $users = User::where('id', '!=' , Auth::user()->id)->get();
-        return view('dashboard',compact('users'));
+        return redirect()->route('chat');
     }
     public function chat(){
 
