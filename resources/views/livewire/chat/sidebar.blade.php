@@ -52,8 +52,6 @@ new class extends Component {
     public function handleConversationStarted($conversationId)
         {
             $this->setConversation($conversationId);
-            $this->dispatch('conversationUpdated');
-            $this->conversations = Conversation::where('id', $conversationId)->with(['participants', 'lastMessage'])->get();
             $this->loadConversations();
         }
 
@@ -63,7 +61,9 @@ new class extends Component {
       #[On('conversationUpdated')]
       public function refreshList()
     {
+
         $this->loadConversations();
+
     }
 
     public function userLoggedIn($e){
@@ -83,7 +83,6 @@ new class extends Component {
         $listeners = [];
         foreach ($this->conversations as $conversation) {
             $listeners["echo-private:conversation.{$conversation->id},MessageSendEvent"] = 'conversations';
-            $listeners["echo-private:conversation.{$conversation->id},MessageDeliveredEvent"] = 'refreshList';
             $listeners["echo-presence:chat,joining"] = 'userLoggedIn';
             $listeners["echo-presence:chat,leaving"] = 'userLoggedOut';
         }

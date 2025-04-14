@@ -7,7 +7,6 @@ use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use App\Events\MessageDeliveredEvent;
 
 class Message extends Model implements HasMedia
 {
@@ -49,11 +48,8 @@ class Message extends Model implements HasMedia
         $this->update('status', 'unread');
     }
 
-    public function markAsDelivered(){
+    public function markAsDelivered(User $user){
         $this->update(['status' => 'delivered' , 'delivered_at' => now()]);
-
-        // Broadcast the MessageDeliveredEvent
-        broadcast(new MessageDeliveredEvent($this->conversation_id))->toOthers();
     }
 
 
