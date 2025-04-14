@@ -331,7 +331,7 @@ new class extends Component {
                 <p class="text-foreground">{{ $msg['body'] }}</p>
                 @if ($msg['type'] == 'media')
                 <a href="{{$msg->getFirstMediaUrl('chat') }}">
-                    <img src="{{$msg->getFirstMediaUrl('chat','preview') }}" alt="Image" class="w-32 h-32 rounded-lg">
+                    <img src="{{$msg->getFirstMediaUrl('chat') }}" alt="Image" class="w-32 h-32 rounded-lg">
                 </a>
                 @endif
 =======
